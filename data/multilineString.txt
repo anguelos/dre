@@ -1,0 +1,18 @@
+Real-life data is usually messy.
+It requires a lot of preprocessing to be ready for use.
+Pandas being one of the most-widely used data analysis and manipulation libraries offers several functions to preprocess the raw data.
+In this article, we will focus on one particular function that organizes multiple preprocessing operations into a single one: the pipe function.
+When it comes to software tools and packages, I learn best by working through examples.
+I keep this in mind when creating content.
+I will do the same in this article.
+We will start by creating a data frame with mock data.
+Our data frame contains some missing values indicated by a standard missing value representation for example NaN.
+The id column includes duplicate values.
+Last but not least, 112 in column B seems like an outlier.
+These are some of the typical issues in real-life data.
+We will be creating a pipe that handles the issues we have just described.
+For each task, we need a function.
+Thus, the first step is to create the functions that will be placed in the pipe.
+It is important to note that the functions used in the pipe need to take a data frame as argument and return a data frame.
+The first function handles the missing values.
+The second function is necessary to populate the dataframe.
