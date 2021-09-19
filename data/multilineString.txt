@@ -16,3 +16,20 @@ Thus, the first step is to create the functions that will be placed in the pipe.
 It is important to note that the functions used in the pipe need to take a data frame as argument and return a data frame.
 The first function handles the missing values.
 The second function is necessary to populate the dataframe.
+Hopefully you will and here's why.
+Aside from making some money think about the last project you've built or the last company you were a part of.
+How many times did you grab code on GitHub.
+How many of those projects had the Buy me a coffee sticker.
+a Patreon shoutout or some other form of ask for payment.
+Great now how many of you paid.
+So the developers making these amazing components we all rely heavily on made exactly 0 for the benefit you got out of using the component.
+Couple that with the big cloud vendors openly abusing open source, and we've got ourselves a problem that deserves some attention.
+Anyways, off the soapbox and on to the howto.
+First up, our component. Yes yes, a very impressive react component with a few logos.
+Great though, now that the code is done, let's get it into GitHub.
+I'll first create a private repo and show how to sell it on SugarKubes,
+then I'll make the repo public and show how to sell it on LIGIT.
+What's the difference between SugarKubes and LIGIT?
+SugarKubes is for when you want to keep the code private. When someone makes a purchase they get added as a collaborator to the private repo.
+LIGIT is the opposite.
+You keep the code open source and monetize via a license. So someone will purchase a license for your project and then be able to use it however they need to.

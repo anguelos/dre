@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+from util import one_hot
 
 
 class MultilineStringDataset:
@@ -14,14 +16,14 @@ class MultilineStringDataset:
         # Separate each new lines (\n) and generate a sequence of text
         lowered = f.read().lower()
         # Get 2D pytorch tensors for each lines
-        stripped = "".join(c for c in lowered if c not in ('!', '.', ':', '-', ','))
+        stripped = "".join(c for c in lowered if c not in ('!', '.', ':', '-', ',', "'", "?"))
         samples_to_process = stripped.splitlines()
         f.close()
 
         for idx, sample in enumerate(samples_to_process):
-            encoded = list(sample.encode('ascii'))
+            encoded = np.array(one_hot(sample))
             tensor = torch.tensor(encoded)
-            sample = {'index': idx, 'label': sample, 'encoded': tensor, 'length': len(encoded)}
+            sample = {'label': sample, 'encoded': tensor, 'length': len(encoded)}
             self.samples.append(sample)
 
     def __len__(self):

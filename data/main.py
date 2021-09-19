@@ -6,7 +6,7 @@ from dataloader import MultilineStringDataLoader
 ds = MultilineStringDataset("multilineString.txt")
 
 # load the data loader
-dl = MultilineStringDataLoader(dataset=ds, batch_size=5, shuffle=True)
+dl = MultilineStringDataLoader(dataset=ds, batch_size=4, shuffle=True)
 
 
 # for i in range(len(ds)):
