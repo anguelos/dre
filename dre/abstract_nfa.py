@@ -2,6 +2,7 @@
 from matplotlib import pyplot as plt
 import matplotlib
 import numpy as np
+from collections import defaultdict
 
 
 class FAGraph(object):
@@ -508,14 +509,14 @@ class FAGraph(object):
             assert len(start_states)==1
             return start_states[0]
 
-        def create_transition_matrices(self):
+        def create_transition_matrices(self, start_regex=False, end_regex=False):
             """Creates eNFA transition matrices.
 
             Each symbol has a its own transition matrix
 
             :return: A defaultdict mapping symbols to transition matrices
             """
-            all_transitions,states=self.get_all_states_and_transitions()
+            all_transitions, states = self.get_all_states_and_transitions()
             ids=sorted(set([s.id for s in states]))
             assert min(ids) == 0
             state_sz=max(ids)+1
@@ -540,8 +541,17 @@ class FAGraph(object):
                     starting_states[state.id]=1
                 if state.is_ending:
                     accepting_states[state.id]=1
-            starting_states=np.dot(starting_states,e_transitions)
-            return transition_matrices,starting_states,accepting_states
+            starting_states = np.dot(starting_states,e_transitions)
+            starting_states[starting_states>0]=1
+
+            start_state_indexes = starting_states==1
+            accept_state_indexes = accepting_states==1
+            for symbol, matrix in list(transition_matrices.items()):
+                if not start_regex: # if no ^ was set at the begining of the regex
+                    matrix[start_state_indexes, start_state_indexes] = 1
+                if not end_regex: # if no ^ was set at the begining of the regex
+                    matrix[accept_state_indexes, accept_state_indexes] = 1
+            return transition_matrices, starting_states, accepting_states
 
 
     @staticmethod
@@ -697,6 +707,15 @@ class FAGraph(object):
         res= "NFA Graph:\n"+str(self.nfa_segment)
         return res
 
+
+    def __init__(self, segment:NFASegment, start:bool, end:bool, re_str:str="N/A") -> None:
+        self.start = start
+        self.end = end
+        self.nfa_segment = segment
+        self.re_str = re_str
+        #self.nfa_segment.reduce_states()
+        self.nfa_segment.label_states()
+        
 #import lm_util
 
 

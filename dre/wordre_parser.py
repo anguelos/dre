@@ -13,13 +13,16 @@ from typing import Union
 
 class WordLexer(Lexer):
     # This is the set of tokens we are exporting to the Parser
-    tokens = {WORD, ASTERISK, QUESTIONMARK, PLUS, OR, LEFT_PAR, RIGHT_PAR}
+    tokens = {ANY, START, END, WORD, ASTERISK, QUESTIONMARK, PLUS, OR, LEFT_PAR, RIGHT_PAR}
     # Any literals we want to ignore
     ignore = ' \t'
     # Any literals we did not define as tokens, will be available for usage in the Parser
     literals = {'.', '!'}
 
     # The definition of each token in a regex pattern - Notice that the order MATTERS!! First match will be taken
+    ANY = r'\.'
+    START = r'\^'
+    END = r'\$'
     WORD = r'[A-Za-z]+'
     ASTERISK = r'\*'
     QUESTIONMARK = r'\?'
@@ -43,13 +46,46 @@ class WordParser(Parser):
         ('right', LEFT_PAR),
     )
 
-    def __init__(self, variables: dict = None):
-        self.variables = variables or {}  # We want to allow input context
-        self.stack = []  # We will use a stack to traverse the tree and keep the results
+    def __init__(self):
+        self.lexer = WordLexer()
+    
+    def parse_str(self, text):
+        tokens = self.lexer.tokenize(text) # Creates a generator of tokens
+        result = self.parse(tokens)
+        result.re_str = text
+        return result
 
     @property
     def last_item_on_stack(self):
         return self.stack[-1] if len(self.stack) > 0 else None
+
+    @_('START expr END')
+    def regex(self, p):
+        print('START+ expr END+')
+        segment = p[1]
+        assert isinstance(segment, FAGraph.NFASegment)        
+        return FAGraph(segment=segment, start=True, end=True)
+
+    @_('START expr')
+    def regex(self, p):
+        print('START+ expr END-')
+        segment = p[1]
+        assert isinstance(segment, FAGraph.NFASegment)        
+        return FAGraph(segment=segment, start=True, end=False)
+
+    @_('expr END')
+    def regex(self, p):
+        print('START- expr END+')
+        segment = p[0]
+        assert isinstance(segment, FAGraph.NFASegment)        
+        return FAGraph(segment=segment, start=False, end=True)
+
+    @_('expr')
+    def regex(self, p):
+        print('START- expr END-')
+        segment = p[0]
+        assert isinstance(segment, FAGraph.NFASegment)        
+        return FAGraph(segment=segment, start=False, end=False)
 
     @_("orexpr","literal", "iexpr", "uexpr")
     def expr(self, p):
@@ -62,8 +98,6 @@ class WordParser(Parser):
         else:
             raise ValueError
 
-
-    
     @_("expr expr")
     def expr(self, p):
         print("E_E", tuple(p))
@@ -98,28 +132,39 @@ class WordParser(Parser):
     @_("LEFT_PAR expr RIGHT_PAR")
     def iexpr(self,p):
         print(f"Parenthesis:{repr(p)}")
-        return FAGraph.NFASegment.create_transition_segment(symbol_str="P[1]", caption="PARENTHESIS")
+        return FAGraph.NFASegment.create_transition_segment(symbol_str=f"({p[1]})", caption=f"({p[1]})")
+    @_('ANY')
+    def iexpr(self, p):
+        print(f"p:{repr(tuple(p))}")
+        assert tuple(p) == ('.',)
+        return FAGraph.NFASegment.create_transition_segment(symbol_str=WordLexer.ANY, caption=f"Any")
 
     @_('WORD')
     def literal(self,p):
         print(f"LITERAL:{repr(p[0])}")
         return(p[0])
         #self.stack.append(p[0])
+    
+
+
 
 
 def main():
     lexer = WordLexer()
     while True:
         text = input(">>> ")
-        tokens = lexer.tokenize(text) # Creates a generator of tokens
         parser = WordParser()
-        graph = FAGraph()
-        graph.re_str=text
-        graph.nfa_segment=parser.parse(tokens)
-        graph.nfa_segment.label_states()
+        graph = parser.parse_str(text)
         #graph.draw_graph(graph.nfa_segment)
         print(graph)
-        print(graph.create_matrices())
+        transitions, starting_states, accepting_states = graph.nfa_segment.create_transition_matrices()
+        print("Transitions:")
+        for symbol, transition in transitions.items():
+            print(symbol,":")
+            print(transition)
+            print(starting_states)
+            print(accepting_states)
+            print("")
         #print(parser.parse(tokens)) # The entry point to the parser
         #print(parser.last_item_on_stack)
 
