@@ -1,2 +1,8 @@
-from finit_automata import *
-from rernn.py import *
+#from .abstract_nfa import FAGraph
+from .fa_graph import FAGraph
+from .fa_segment import NFASegment
+from .fa_state import FAState
+from .fa_transition import FATransition
+from .wordre_parser import WordParser, WordLexer
+#from rernn.py import *
+

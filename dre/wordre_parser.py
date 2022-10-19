@@ -1,10 +1,11 @@
 import sys
-sys.path.append("./dre")
-from abstract_nfa import FAGraph
 
-from sly import Lexer
-from sly import Parser
-from abstract_nfa import FAGraph
+#sys.path.append("./dre")
+from .fa_segment import NFASegment
+from .fa_graph import FAGraph
+
+from sly import Lexer,  Parser
+
 from matplotlib import pyplot as plt
 from collections import defaultdict
 from typing import Union
@@ -47,6 +48,7 @@ class WordParser(Parser):
     )
 
     def __init__(self):
+        super().__init__()
         self.lexer = WordLexer()
     
     def parse_str(self, text):
@@ -63,98 +65,94 @@ class WordParser(Parser):
     def regex(self, p):
         print('START+ expr END+')
         segment = p[1]
-        assert isinstance(segment, FAGraph.NFASegment)        
+        assert isinstance(segment, NFASegment)        
         return FAGraph(segment=segment, start=True, end=True)
 
     @_('START expr')
     def regex(self, p):
         print('START+ expr END-')
         segment = p[1]
-        assert isinstance(segment, FAGraph.NFASegment)        
+        assert isinstance(segment, NFASegment)        
         return FAGraph(segment=segment, start=True, end=False)
 
     @_('expr END')
     def regex(self, p):
         print('START- expr END+')
         segment = p[0]
-        assert isinstance(segment, FAGraph.NFASegment)        
+        assert isinstance(segment, NFASegment)        
         return FAGraph(segment=segment, start=False, end=True)
 
     @_('expr')
     def regex(self, p):
         print('START- expr END-')
         segment = p[0]
-        assert isinstance(segment, FAGraph.NFASegment)        
+        assert isinstance(segment, NFASegment)        
         return FAGraph(segment=segment, start=False, end=False)
 
     @_("orexpr","literal", "iexpr", "uexpr")
     def expr(self, p):
         #print ("EXPR", tuple(p))
-        #return FAGraph.NFASegment.create_transition_segment(symbol_str=p[0], caption=p[0])
-        if isinstance(p[0], FAGraph.NFASegment):
+        #return NFASegment.create_transition_segment(symbol_str=p[0], caption=p[0])
+        if isinstance(p[0], NFASegment):
             return p[0]
         elif isinstance(p[0], str):
-            return FAGraph.NFASegment.create_transition_segment(symbol_str=p[0], caption=f"expr:{p[0]}")
+            return NFASegment.create_transition_segment(symbol_str=p[0], caption=f"S:{p[0]}")
         else:
             raise ValueError
 
     @_("expr expr")
     def expr(self, p):
         print("E_E", tuple(p))
-        return FAGraph.NFASegment.create_concatenate_segment(p[0], p[1])
+        return NFASegment.create_concatenate_segment(p[0], p[1])
         
 
     @_("expr OR expr")
     def orexpr(self, p):
         print("OR", tuple(p))
-        return FAGraph.NFASegment.create_or_segment(p[0], p[2])
+        return NFASegment.create_or_segment(p[0], p[2])
 
     @_("expr ASTERISK")
     def uexpr(self, p):
         print("ASTERISK", tuple(p))
-        return FAGraph.NFASegment.create_asterisk_segment(p[0])
+        return NFASegment.create_asterisk_segment(p[0])
 
     @_("expr QUESTIONMARK")
     def uexpr(self, p):
         print ("QUESTIONMARK", tuple(p))
-        return FAGraph.NFASegment.create_question_segment(p[0])
+        return NFASegment.create_question_segment(p[0])
 
     @_("expr PLUS")
     def uexpr(self,p):
         print("PLUS", tuple(p))
-        return FAGraph.NFASegment.create_plus_segment(p[0])
+        return NFASegment.create_plus_segment(p[0])
 
     @_("literal")
     def iexpr(self, p):
         print ("LITERAL", tuple(p))
-        return FAGraph.NFASegment.create_transition_segment(symbol_str=p[0], caption=p[0])
+        return NFASegment.create_transition_segment(symbol_str=p[0], caption=p[0])
 
     @_("LEFT_PAR expr RIGHT_PAR")
     def iexpr(self,p):
         print(f"Parenthesis:{repr(p)}")
-        return FAGraph.NFASegment.create_transition_segment(symbol_str=f"({p[1]})", caption=f"({p[1]})")
+        return p[1]
+        #return NFASegment.create_transition_segment(symbol_str=f"({p[1]})", caption=f"({p[1]})")
     @_('ANY')
     def iexpr(self, p):
         print(f"p:{repr(tuple(p))}")
         assert tuple(p) == ('.',)
-        return FAGraph.NFASegment.create_transition_segment(symbol_str=WordLexer.ANY, caption=f"Any")
+        return NFASegment.create_transition_segment(symbol_str=WordLexer.ANY, caption=f"Any")
 
     @_('WORD')
     def literal(self,p):
         print(f"LITERAL:{repr(p[0])}")
         return(p[0])
         #self.stack.append(p[0])
-    
 
 
-
-
-def main():
-    lexer = WordLexer()
+if __name__ == '__main__':
     while True:
         text = input(">>> ")
-        parser = WordParser()
-        graph = parser.parse_str(text)
+        graph = WordParser().parse_str(text)
         #graph.draw_graph(graph.nfa_segment)
         print(graph)
         transitions, starting_states, accepting_states = graph.nfa_segment.create_transition_matrices()
@@ -165,8 +163,3 @@ def main():
             print(starting_states)
             print(accepting_states)
             print("")
-        #print(parser.parse(tokens)) # The entry point to the parser
-        #print(parser.last_item_on_stack)
-
-if __name__ == '__main__':
-    main()
