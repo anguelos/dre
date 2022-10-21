@@ -3,6 +3,9 @@ from dre.fa_state import FAState
 
 class FATransition(object):
     def __init__(self, symbol_str="", caption="", source=None, destination=None):
+        assert source is not None
+        assert destination is not None
+        
         if symbol_str == "" and caption=="":
             caption = "ε"
         self.symbol_str=symbol_str
@@ -37,6 +40,7 @@ class FATransition(object):
         return self._destination
 
     def set_source(self,state):
+        raise Exception
         if self._source is not None:
             self._source._outgoing.remove(self)
         self._source=state
@@ -44,6 +48,7 @@ class FATransition(object):
             state._outgoing.append(self)
 
     def set_destination(self,state):
+        raise Exception
         if self._destination is not None:
             self._destination._incoming.remove(self)
         self._destination=state
@@ -77,7 +82,7 @@ class FATransition(object):
         if self._source is not None and self._destination is not None:
             return hash(self._source)*hash(self._destination)*hash(self.symbol_str)
         else:
-            return object.__hash__(self)
+            raise ValueError
     
     #def __del__(self):
     #    print("__del__{")
@@ -91,7 +96,14 @@ class FATransition(object):
     #        return False
     #    return (self._source, self._destination, self.symbol_str) == (other._source, other._destination, other.symbol_str)
 
+    def __lt__(self, other):
+        return str(self)<str(other)
+    def __eq__(self,other):
+        return str(self)==str(other)
+
+
     def clone(self,source=None,destination=None):
+        raise Exception
         res=FATransition(symbol_str=self.symbol_str, caption=self.caption)
         res._source=source
         res._destination=destination

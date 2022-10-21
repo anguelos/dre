@@ -72,8 +72,8 @@ class Regexer(torch.nn.Module):
         #time_oh_batch=batched_time_onehot.transpose(0,1).transpose(1,2).contiguous()
         for t in range(seq_len):
             current_states=torch.matmul(current_states,self.all_transitions)
-            print current_states.size()
-            print time_onehot_batch[t,:,:,None].size()
+            print((current_states.size()))
+            print((time_onehot_batch[t,:,:,None].size()))
             outgoing_states=current_states*time_onehot_batch[t,:,:,None]
             outgoing_states=outgoing_states.max(dim=0)[0]
             current_states=outgoing_states
@@ -94,7 +94,7 @@ def plot_transition_matrices(symbol_seq,transition_matrix_dict,starting_states,a
     ax.grid(which='minor', color='g', linestyle='-', linewidth=1)
 
     idx=2
-    for symbol,matrix in transition_matrix_dict.items():
+    for symbol,matrix in list(transition_matrix_dict.items()):
         ax = plt.subplot(1,len(transition_matrix_dict)+1,idx)
         ax.imshow(matrix,cmap="gray",interpolation='none', vmin=0, vmax=1)
         ax.set_title(symbol)
@@ -133,7 +133,7 @@ def run_torch(regex,strlist,symbol2idx={'a':0,'b':1,'c':2}):
     transition_dict,starting_states,accepting_states= g.nfa_segment.create_transition_matrices()
     #print transition_dict
     reg=Regexer(transition_dict,starting_states,accepting_states)
-    print reg(oh_seq)
+    print((reg(oh_seq)))
 
 
 if __name__=="__main__":
@@ -151,11 +151,11 @@ if __name__=="__main__":
     t=time.time()
     for _ in range(1000):
         status= simple_regex_match(seq*100,transition_dict,starting_states,accepting_states)
-    print "R:{} | {} | Accepted:{} \nRun  100000 times in  {} msec".format(regex,seq,status,int((time.time()-t)*1000))
+    print(("R:{} | {} | Accepted:{} \nRun  100000 times in  {} msec".format(regex,seq,status,int((time.time()-t)*1000))))
     t=time.time()
     for _ in range(1000):
         status= re.match(regex,seq*100)
-    print "R:{} | {} | Accepted:{} \nRun  100000 times in  {} msec".format(regex,seq,status,int((time.time()-t)*1000))
+    print(("R:{} | {} | Accepted:{} \nRun  100000 times in  {} msec".format(regex,seq,status,int((time.time()-t)*1000))))
     #finit_automata.FAGraph.draw_graph(g.nfa_segment, re_str=regex)
     #plot_transition_matrices(seq,transition_dict,starting_states,accepting_states)
     #plt.show()

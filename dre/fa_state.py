@@ -62,7 +62,7 @@ class FAState(object):
     def outgoing_transitions(self):
         return tuple(self._outgoing)
 
-    def clone(self):
+    def clone_disconnected(self):
         res=FAState(visual_caption=self.visual_caption)
         res.is_ending=self.is_ending
         res.is_starting=self.is_starting
@@ -124,18 +124,21 @@ class FAState(object):
 
     @property
     def is_removable(self):
-        all_nodes=self.incoming_states + self.outgoing_states+(self,)
-        if len(all_nodes)!=len(set(all_nodes)):
-            return False # Can't be allowed to create
-        if len(self._outgoing)==0 or len(self._incoming)==0:
+        if len(self._incoming)<1 or len(self._outgoing)<1:
+            #starting or accepting
             return False
-        if len(self._outgoing)==1 and not self._outgoing[0]:
-            return True
-        if len(self._incoming) == 1 and not self._incoming[0]:
-            return True
-        return False
+
+        if len(self._incoming)>1 or len(self._outgoing)>1:
+            #multiple incoming or outgoing
+            return False
+
+        if (bool(self._incoming[0]) and bool(self._outgoing[0])):
+            # both incoming and outgoig not epsilons
+            return False
+        return True
 
     def remove(self):
+        raise Exception
         if len(self._outgoing)==1 and not(self._outgoing[0]):
             replacing_state=self._outgoing[0].destination
             for tr in self._incoming:
@@ -149,6 +152,9 @@ class FAState(object):
         else:
             raise ValueError
 
+    def __hash__(self):
+        return object.__hash__(self)
+
     def __str__(self):
         id=self.id
         start_str=">" if self.is_starting else " "
@@ -156,6 +162,9 @@ class FAState(object):
         if id is None:
             id=-1
         return "%sS{%d|%d>%d}%s"%(start_str,id,len(self.incoming_transitions),len(self.outgoing_transitions),end_str)
+    
+    def __eq__(self, other):
+        return str(self) == str(other)
 
     def __lt__(self,other):
         python_id_cmp=.5*(id(self)<id(other))
