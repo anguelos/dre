@@ -48,11 +48,27 @@ def test_empty_segment():
     assert segment.sink._incoming[0].source is segment.source
     assert segment.source._outgoing[0].destination is segment.sink
 
+# TODO (anguelos) double check cardinalities
 all_creators_sizes_reducedsizes = [(create_transition_graph, (1,2), (1,2)), 
-                                   (create_concatenation_graph, (5,6), (3,2)), 
-                                   (create_asterisk_graph, (7,6), (3,2)),
-                                   (create_question_graph, (7,6), (3,2)), 
-                                   (create_plus_graph, (7,6), (3,2))]
+                                   (create_concatenation_graph, (5,6), (3,4)), 
+                                   (create_asterisk_graph, (12,12), (8,8)),
+                                   (create_question_graph, (12,12), (6,6)), 
+                                   (create_plus_graph, (15,14), (7,7))]
+
+@pytest.mark.parametrize(("creator", "tr_st_sz"), [t[:2] for t in all_creators_sizes_reducedsizes])
+def test_clone(creator, tr_st_sz, _):
+    segment = creator()
+    num_transitions, num_states = tr_st_sz
+    transitions, states = segment.get_all_states_and_transitions()
+    assert len(transitions) == num_transitions
+    assert len(states) == num_states
+
+    cloned_segment = segment.reduce_states()
+    cloned_transitions, cloned_states = cloned_segment.get_all_states_and_transitions()
+
+    assert len(cloned_transitions) == num_transitions
+    assert len(cloned_states) == num_states
+
 
 @pytest.mark.parametrize(("creator","tr_st_sz", "tr_st_reduced_sz"), all_creators_sizes_reducedsizes)
 def test_reduce_size(creator, tr_st_sz, tr_st_reduced_sz):
@@ -66,8 +82,8 @@ def test_reduce_size(creator, tr_st_sz, tr_st_reduced_sz):
     reduced_segment = segment.reduce_states()
     transitions, states = reduced_segment.get_all_states_and_transitions()
 
-    assert len(transitions) == num_transitions
-    assert len(states) == num_states
+    assert len(transitions) == reduced_num_transitions
+    assert len(states) == reduced_num_states
 
 
 all_creators = [t[0] for t in all_creators_sizes_reducedsizes]

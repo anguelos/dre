@@ -1,3 +1,10 @@
+#sly output
+parser.out
+
+#graphviz temporary stuff
+fsm.gv*
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

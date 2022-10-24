@@ -5,7 +5,6 @@ class FATransition(object):
     def __init__(self, symbol_str="", caption="", source=None, destination=None):
         assert source is not None
         assert destination is not None
-        
         if symbol_str == "" and caption=="":
             caption = "ε"
         self.symbol_str=symbol_str
