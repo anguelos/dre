@@ -5,10 +5,11 @@ from .wordre_parser import WordParser
 from .symbolre_parser import WordParser
 
 
-
 class AbstractEmbedder(object):
+    """A class that converts tokens to embeddings.
+    """
     @property
-    def embedding_size(self):
+    def embedding_size(self) -> int:
         return self.null_embedding.size(0)
     @property
     def null_embedding(self) -> torch.Tensor:
@@ -51,7 +52,7 @@ class Glove50Embedder(AbstractEmbedder):
        -0.59021 ,  0.55559 ])
     
     @staticmethod
-    def load_glove(path="tmp/glove/glove.6B.50d.txt"):
+    def load_glove(path:str="tmp/glove/glove.6B.50d.txt") -> Glove50Embedder:
         lines = [l.split() for l in open(path, "r").read().strip().split("\n")]
         embbeding_list = [(l[0], torch.tensor([float(c) for c in l[1:]])) for l in lines]
         del lines
@@ -64,14 +65,15 @@ class Glove50Embedder(AbstractEmbedder):
     def null_embedding(self) -> torch.Tensor:
         return Glove50Embedder.avg.size(0)
 
-    def __init__(self, glove_path="tmp/glove/glove.6B.50d.txt") -> None:
+    def __init__(self, glove_path:str="tmp/glove/glove.6B.50d.txt") -> None:
         self.embbeding_dict, self.embbeding_list = Glove50Embedder.load_glove(glove_path)
 
-    def __getitem__(self, token):
+    def __getitem__(self, token:str) -> torch.Tensor:
         return self.embbeding_dict.get(token,Glove50Embedder.avg)
 
 
 class AbstractObserver(object):
+    """A class that converts observations into a sequence of probabillities over an alphabet"""
     @property
     def observation_size(self) -> int:
         raise NotImplemented
@@ -107,6 +109,3 @@ class SequenceObserver(object):
         states = self.starting_states.copy()
         for token in tokens:
             obs_probs = self.get_observation_probabilities(token)[None,:]
-
-
-        

@@ -38,35 +38,35 @@ class FATransition(object):
     def destination(self):
         return self._destination
 
-    def set_source(self,state):
-        raise Exception
-        if self._source is not None:
-            self._source._outgoing.remove(self)
-        self._source=state
-        if self not in state._outgoing:
-            state._outgoing.append(self)
+    # def set_source(self,state):
+    #     raise Exception
+    #     if self._source is not None:
+    #         self._source._outgoing.remove(self)
+    #     self._source=state
+    #     if self not in state._outgoing:
+    #         state._outgoing.append(self)
 
-    def set_destination(self,state):
-        raise Exception
-        if self._destination is not None:
-            self._destination._incoming.remove(self)
-        self._destination=state
-        if self not in state._incoming:
-            state._incoming.append(self)
+    # def set_destination(self,state):
+    #     raise Exception
+    #     if self._destination is not None:
+    #         self._destination._incoming.remove(self)
+    #     self._destination=state
+    #     if self not in state._incoming:
+    #         state._incoming.append(self)
 
-    def remove(self):
-        if self._destination is not None:
-            self._destination._incoming.remove(self)
-        if self._source is not None:
-            self._source._outgoing.remove(self)
-        return
-        self._destination
-        dst=self._destination
-        dst._incoming=[tr for tr in dst._incoming if tr is not self]
-        src=self._source
-        src._outgoing=[tr for tr in src._outgoing if tr is not self]
-        self._destination=None
-        self._source=None
+    # def remove(self):
+    #     if self._destination is not None:
+    #         self._destination._incoming.remove(self)
+    #     if self._source is not None:
+    #         self._source._outgoing.remove(self)
+    #     return
+    #     self._destination
+    #     dst=self._destination
+    #     dst._incoming=[tr for tr in dst._incoming if tr is not self]
+    #     src=self._source
+    #     src._outgoing=[tr for tr in src._outgoing if tr is not self]
+    #     self._destination=None
+    #     self._source=None
 
     def __str__(self):
         #print("DBG:",repr((self.src_id, self.caption, self.dst_id)))
@@ -101,13 +101,13 @@ class FATransition(object):
         return str(self)==str(other)
 
 
-    def clone(self,source=None,destination=None):
-        raise Exception
-        res=FATransition(symbol_str=self.symbol_str, caption=self.caption)
-        res._source=source
-        res._destination=destination
-        return res
+    # def clone(self,source=None,destination=None):
+    #     raise Exception
+    #     res=FATransition(symbol_str=self.symbol_str, caption=self.caption)
+    #     res._source=source
+    #     res._destination=destination
+    #     return res
 
-    @classmethod
-    def create_transition(cls, symbol_str="",caption="\\u2205"):
-        return cls(symbol_str=symbol_str,caption=caption)
+    # @classmethod
+    # def create_transition(cls, symbol_str="",caption="\\u2205"):
+    #     return cls(symbol_str=symbol_str,caption=caption)

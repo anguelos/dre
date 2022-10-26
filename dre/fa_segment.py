@@ -7,26 +7,13 @@ from typing import List, Set, Tuple, Union
 from .fa_state import FAState
 from .fa_transition import FATransition
 
+
 class NFASegment(object):
     def __init__(self, _=None, source=None, sink=None):
         assert source is not None
         assert sink is not None
         self.source=source
         self.sink=sink
-    
-    @property
-    def reduced_source(self):
-        src = self.source
-        while isinstance(src,FAState) and len(src._outgoing) == 1 and bool(src._outgoing[0]) and isinstance(src._outgoing[0].destination, FAState):
-            src = src._outgoing[0].destination
-        return src
-
-    @property
-    def reduced_sink(self):
-        dst = self.sink
-        while isinstance(dst,FAState) and len(dst._incoming) == 1 and bool(dst._incoming[0]) and isinstance(dst._incoming[0].source, FAState):
-            dst = dst._incoming[0].source
-        return dst
 
     def is_dfa(self):
         transitions, states = self.get_all_states_and_transitions()
@@ -51,24 +38,31 @@ class NFASegment(object):
 
 
     def get_all_states_and_transitions(self) -> Tuple[Tuple[FAState], Tuple[FAState]]:
-        transitions, states = NFASegment._get_all_states_and_transitions(self.source, set())
+        transitions, states = NFASegment._get_all_states_and_transitions(self.source, set(), set())
         return tuple(sorted(transitions)), tuple(sorted(states))
 
     @staticmethod
-    def _get_all_states_and_transitions(state:FAState,visited_states:Set[FAState]) -> Tuple[Set[FAState], Set[FAState]]:
-        if state in visited_states:
-            return set(),set()
-        transitions=set(state.incoming_transitions+state.outgoing_transitions)
-        states=set((state,)+state.incoming_states+state.outgoing_states)
-        for new_state in states-visited_states:
-            new_transitions,new_states = NFASegment._get_all_states_and_transitions(new_state,set.union(visited_states,{state}))
-            transitions.update(new_transitions)
-            states.update(new_states)
-        return transitions, states
+    def _get_all_states_and_transitions(state:FAState,visited_states:Set[FAState], visited_transitions:Set[FATransition]) -> Tuple[Set[FAState], Set[FAState]]:
+        result_states = visited_states.union({state})
+        result_transitions = visited_transitions.copy()
+        for incoming in state.incoming_transitions:
+            result_transitions.add(incoming)
+            if incoming.source not in result_states:
+                new_transitions, new_states = NFASegment._get_all_states_and_transitions(state=incoming.source,visited_states=result_states, visited_transitions=result_transitions)
+                result_states.update(new_states)
+                result_transitions.update(new_transitions)
+
+        for outgoing in state.outgoing_transitions:
+            result_transitions.add(outgoing)
+            if outgoing.destination not in result_states:
+                new_transitions, new_states = NFASegment._get_all_states_and_transitions(state=outgoing.destination,visited_states=result_states, visited_transitions=result_transitions)
+                result_states.update(new_states)
+                result_transitions.update(new_transitions)
+        return result_transitions, result_states
 
 
     def clone(self):
-        transitions,states=self.get_all_states_and_transitions()
+        transitions,states = self.get_all_states_and_transitions()
         assert self.sink in states
         old2new_states={s:s.clone_disconnected() for s in states}
         #old2new_transitions = {t: t.clone() for t in transitions}
@@ -112,7 +106,6 @@ class NFASegment(object):
         return result
 
 
-
     def __str__(self):
         transitions, states = self.get_all_states_and_transitions()
         states = [st[1] for st in sorted([(s.id,s) for s in states])]
@@ -127,7 +120,7 @@ class NFASegment(object):
         source=FAState()
         sink=FAState()
         transition=FATransition(source=source, destination=sink, symbol_str=symbol_str,caption=caption)
-        return cls(sink=sink,source=source)
+        return cls(sink=sink, source=source)
 
     @classmethod
     def create_concatenate_segment(cls,left_segment,right_segment):
@@ -136,8 +129,6 @@ class NFASegment(object):
         left_transition = FATransition(source=source, destination=left_segment.source)
         midle_transition = FATransition(source=left_segment.sink, destination=right_segment.source)
         right_transition = FATransition(source=right_segment.source, destination=sink)
-        #transition.set_destination(right_segment.source)
-        #transition.set_source(left_segment.sink)
         return cls(sink=sink,source=source)
 
     @classmethod
@@ -151,37 +142,12 @@ class NFASegment(object):
 
     @classmethod
     def create_question_segment(cls,input_segment):
-        # source=FAState()
-        # sink=FAState()
 
-        # source_transition=FATransition()
-        # source_transition.set_source(source)
-        # source_transition.set_destination(input_segment.reduced_source)
-
-        # destination_transition=FATransition()
-        # destination_transition.set_destination(sink)
-        # destination_transition.set_source(input_segment.reduced_sink)
-
-        # shortcut_transition=FATransition()
-        # shortcut_transition.set_source(source)
-        # shortcut_transition.set_destination(sink)
-
-        # return cls(sink=sink,source=source)
         source=FAState()
         sink=FAState()
-
         source_transition=FATransition(source=source,destination=input_segment.source)
-        #source_transition.set_source(source)
-        #source_transition.set_destination(input_segment.source)
-
         destination_transition=FATransition(source=input_segment.sink, destination=sink)
-        #destination_transition.set_destination(sink)
-        #destination_transition.set_source(input_segment.sink)
-
         shortcut_transition=FATransition(source=source, destination=sink)
-        #shortcut_transition.set_source(source)
-        #shortcut_transition.set_destination(sink)
-
         return cls(sink=sink,source=source)
 
     @classmethod
@@ -192,25 +158,13 @@ class NFASegment(object):
 
 
     @classmethod
-    def create_or_segment(cls,left_segment,right_segment):
-        source=FAState()
-        sink=FAState()
-
-        left_source_transition=FATransition()
-        left_source_transition.set_source(source)
-        left_source_transition.set_destination(left_segment.source)
-
-        left_destination_transition=FATransition()
-        left_destination_transition.set_destination(sink)
-        left_destination_transition.set_source(left_segment.sink)
-
-        right_source_transition=FATransition()
-        right_source_transition.set_source(source)
-        right_source_transition.set_destination(right_segment.source)
-
-        right_destination_transition=FATransition()
-        right_destination_transition.set_destination(sink)
-        right_destination_transition.set_source(right_segment.sink)
+    def create_or_segment(cls, left_segment, right_segment):
+        source = FAState()
+        sink = FAState()
+        left_source_transition=FATransition(source=source, destination=left_segment.source)
+        left_destination_transition=FATransition(source=left_segment.sink, destination=sink)
+        right_source_transition=FATransition(source=source, destination=right_segment.source)
+        right_destination_transition=FATransition(source=right_segment.sink, destination=sink)
         return cls(sink=sink,source=source)
 
     def label_states(self):

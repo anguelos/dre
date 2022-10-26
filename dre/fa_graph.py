@@ -27,55 +27,55 @@ class FAGraph(object):
     #     return output_states,state2state,state2symbol,symbol2state
 
 
-    @staticmethod
-    def draw_graph(nfa_segment,re_str="NA"):
-        plt.figure()
-        all_transitions,states=nfa_segment.get_all_states_and_transitions()
-        null_transitions=[tr for tr in all_transitions if not tr]
-        valid_transitions = [tr for tr in all_transitions if tr]
-        x_node_step=30
-        state_sz=5
-        text_dx = 2
-        text_dy = 2
-        valid_arrowstyle="Simple,tail_width=0.5,head_width=4,head_length=8"
-        null_arrowstyle="Simple,tail_width=0.5,head_width=4,head_length=8"
-        plt.axes().set_xlim(-2*state_sz, (max([1+s.id for s in states]) - 1) * x_node_step + state_sz*2)
-        plt.axes().set_ylim(-40, 40)
-        plt.axes().set_aspect(1)
+    # @staticmethod
+    # def draw_graph(nfa_segment,re_str="NA"):
+    #     plt.figure()
+    #     all_transitions,states=nfa_segment.get_all_states_and_transitions()
+    #     null_transitions=[tr for tr in all_transitions if not tr]
+    #     valid_transitions = [tr for tr in all_transitions if tr]
+    #     x_node_step=30
+    #     state_sz=5
+    #     text_dx = 2
+    #     text_dy = 2
+    #     valid_arrowstyle="Simple,tail_width=0.5,head_width=4,head_length=8"
+    #     null_arrowstyle="Simple,tail_width=0.5,head_width=4,head_length=8"
+    #     plt.axes().set_xlim(-2*state_sz, (max([1+s.id for s in states]) - 1) * x_node_step + state_sz*2)
+    #     plt.axes().set_ylim(-40, 40)
+    #     plt.axes().set_aspect(1)
 
-        patches=[]
-        captions_and_coords=[]
+    #     patches=[]
+    #     captions_and_coords=[]
 
-        for state in states:
-            x=state.id * x_node_step
-            y=0
-            patches.append(
-                matplotlib.patches.Circle([x, y], radius=state_sz,
-                                          color=[0, 1, 0]))
-            captions_and_coords.append([x-text_dx,y-text_dy,str(state.id)])
+    #     for state in states:
+    #         x=state.id * x_node_step
+    #         y=0
+    #         patches.append(
+    #             matplotlib.patches.Circle([x, y], radius=state_sz,
+    #                                       color=[0, 1, 0]))
+    #         captions_and_coords.append([x-text_dx,y-text_dy,str(state.id)])
 
-        for null_transition in null_transitions:
-            src_id=null_transition.src_id
-            dst_id = null_transition.dst_id
-            y=(src_id<dst_id)*state_sz-(src_id>=dst_id)*state_sz
-            patches.append(matplotlib.patches.FancyArrowPatch((src_id*x_node_step, y), (dst_id*x_node_step,y),
-                                        connectionstyle="arc3,rad=-.2",arrowstyle=null_arrowstyle,color=[.5,.5,.5]))
+    #     for null_transition in null_transitions:
+    #         src_id=null_transition.src_id
+    #         dst_id = null_transition.dst_id
+    #         y=(src_id<dst_id)*state_sz-(src_id>=dst_id)*state_sz
+    #         patches.append(matplotlib.patches.FancyArrowPatch((src_id*x_node_step, y), (dst_id*x_node_step,y),
+    #                                     connectionstyle="arc3,rad=-.2",arrowstyle=null_arrowstyle,color=[.5,.5,.5]))
 
-        for valid_transition in valid_transitions:
-            src_id=valid_transition.src_id
-            dst_id = valid_transition.dst_id
-            y=(src_id<dst_id)*state_sz-(src_id>=dst_id)*state_sz
-            patches.append(matplotlib.patches.FancyArrowPatch((src_id*x_node_step, y), (dst_id*x_node_step,y),
-                                        connectionstyle="arc3,rad=-.2",arrowstyle=valid_arrowstyle))
-            x = (src_id + dst_id)*x_node_step / 2.0
-            y=.15*(dst_id*x_node_step - src_id*x_node_step)
-            captions_and_coords.append([x-text_dx,y-text_dy,valid_transition.caption])
+    #     for valid_transition in valid_transitions:
+    #         src_id=valid_transition.src_id
+    #         dst_id = valid_transition.dst_id
+    #         y=(src_id<dst_id)*state_sz-(src_id>=dst_id)*state_sz
+    #         patches.append(matplotlib.patches.FancyArrowPatch((src_id*x_node_step, y), (dst_id*x_node_step,y),
+    #                                     connectionstyle="arc3,rad=-.2",arrowstyle=valid_arrowstyle))
+    #         x = (src_id + dst_id)*x_node_step / 2.0
+    #         y=.15*(dst_id*x_node_step - src_id*x_node_step)
+    #         captions_and_coords.append([x-text_dx,y-text_dy,valid_transition.caption])
 
-        for p in patches:
-            plt.gca().add_patch(p)
-        for x,y,caption in captions_and_coords:
-            plt.text(x,y,caption)
-        plt.title(re_str)
+    #     for p in patches:
+    #         plt.gca().add_patch(p)
+    #     for x,y,caption in captions_and_coords:
+    #         plt.text(x,y,caption)
+    #     plt.title(re_str)
     
     def plot(self, filename="/tmp/nfa.gv", view=False):
         import graphviz
@@ -102,7 +102,6 @@ class FAGraph(object):
         for tr in transitions:
             print(str(tr))
             d[str(tr)].append((object.__hash__(tr),tr))
-        print("PLOT:",d)
         for transition in transitions:
             src_node = f"S{transition.src_id}"
             dst_node = f"S{transition.dst_id}"
