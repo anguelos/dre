@@ -4,6 +4,9 @@ import numpy as np
 import torch
 
 
+
+
+
 def clean_guutemberg_txt(txt_str:str):
     txt_str = open("tmp/texts/the_idiot.txt","r").read()
     #chopping gutemberg

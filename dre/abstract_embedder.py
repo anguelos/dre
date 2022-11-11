@@ -1,8 +1,6 @@
 import torch
 from typing import List, Dict
-
 from .wordre_parser import WordParser
-from .symbolre_parser import WordParser
 
 
 class AbstractEmbedder(object):
@@ -16,6 +14,9 @@ class AbstractEmbedder(object):
         raise NotImplemented
 
     def __getitem__(self, token:str) -> torch.Tensor:
+        raise NotImplemented
+    
+    def keys(self):
         raise NotImplemented
 
 
@@ -52,7 +53,7 @@ class Glove50Embedder(AbstractEmbedder):
        -0.59021 ,  0.55559 ])
     
     @staticmethod
-    def load_glove(path:str="tmp/glove/glove.6B.50d.txt") -> Glove50Embedder:
+    def load_glove(path:str="tmp/glove/glove.6B.50d.txt") :
         lines = [l.split() for l in open(path, "r").read().strip().split("\n")]
         embbeding_list = [(l[0], torch.tensor([float(c) for c in l[1:]])) for l in lines]
         del lines
@@ -67,45 +68,9 @@ class Glove50Embedder(AbstractEmbedder):
 
     def __init__(self, glove_path:str="tmp/glove/glove.6B.50d.txt") -> None:
         self.embbeding_dict, self.embbeding_list = Glove50Embedder.load_glove(glove_path)
+    
+    def keys(self):
+        return self.embbeding_dict.keys()
 
     def __getitem__(self, token:str) -> torch.Tensor:
         return self.embbeding_dict.get(token,Glove50Embedder.avg)
-
-
-class AbstractObserver(object):
-    """A class that converts observations into a sequence of probabillities over an alphabet"""
-    @property
-    def observation_size(self) -> int:
-        raise NotImplemented
-
-    def observe_sequence(self, sequence:str) -> torch.Tensor:
-        tokens = self._tokenize_sequence(sequence)
-        return torch.cat([self._observe_token(token)[:, None] for token in tokens], dim=1)
-
-    def _tokenize_sequence(self, sequence:str) -> List[str]:
-        raise NotImplemented
-
-    def _observe_token(self, sequence:str) -> torch.Tensor:
-        raise NotImplemented
-
-
-class SequenceObserver(object):
-    def __init__(self, embeder:AbstractEmbedder, regex:str, t_regex_parser:type=WordParser) -> None:
-        super().__init__()
-        self.embeder = embeder
-        self.t_regex_parser = t_regex_parser
-        self.fagraph = t_regex_parser().parse_str(regex)
-        self.transitions, self.starting_states, self.accepting_states = self.graph.nfa_segment.create_transition_matrices()
-        self.null_symbol = ''
-        null_transition = torch.zeros_like(self.transitions.values[0])
-        self.transitions[self.null_symbol] = null_transition
-        self.transition_symbols = sorted(tuple(self.transitions.keys())+('',))
-        self.all_transitions = torch.cat([self.transitions[s][None, :, :] for s in self.transition_symbols], dim=0)
-    
-    def get_observation_probabilities(self, token):
-        raise NotImplemented
-
-    def observe_transitions(self, tokens):
-        states = self.starting_states.copy()
-        for token in tokens:
-            obs_probs = self.get_observation_probabilities(token)[None,:]

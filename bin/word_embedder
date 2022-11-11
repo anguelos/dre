@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+import torch
+import tqdm
+
+torch.set_printoptions(precision=5, sci_mode=False)
+import sys
+sys.path.append("./")
+import dre
+import fargv
+
+
+def main():
+    p = {
+        #"embeddings":"tmp/glove/glove.6B.50d.txt",
+        "embeddings":"test/glove_10samples_50d.txt",
+        "text": "tmp/texts/the_idiot.txt",
+        "regex": "persons of various occupations",
+        "v":2
+    }
+    args, _ = fargv.fargv(p)
+    try:
+        text = open(args.text,"r").read()
+    except:
+        text = args.text
+    
+    if args.v>1:
+        print(f"Loading {args.embeddings} ... ", end="")
+    embedder = dre.Glove50Embedder(args.embeddings)
+    word_parser = dre.WordParser()
+    if args.v>1:
+        print(f"done.")
+    observer = dre.SequenceObserver(embedder=embedder, regex_str=args.regex, regex_parser=word_parser)
+    for sentnece in tqdm.tqdm(dre.words_of_sentences(text)):
+        transitions = observer.observe_transitions(sentnece)
+        if args.v >2:
+            print(transitions)
+            print(transitions.size())
+            print(sentnece)
+            print(observer.transition_symbols)
+
+if __name__ == "__main__":
+    main()
