@@ -12,6 +12,8 @@ import fargv
 def main():
     p = {
         #"embeddings":"tmp/glove/glove.6B.50d.txt",
+        "device":"cpu",
+        "observer_b":10,
         "embeddings":"test/glove_10samples_50d.txt",
         "text": "tmp/texts/the_idiot.txt",
         "regex": "persons of various occupations",

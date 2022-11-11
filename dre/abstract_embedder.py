@@ -21,14 +21,15 @@ class AbstractEmbedder(object):
 
 
 class SymbolEmbedder(AbstractEmbedder):
-    def __init__(self, values:Dict[str, int]):
+    def __init__(self, values:Dict[str, int], device="cpu"):
+        self.device = device
         self.num_values = {}
         self.num_values.update(values)
         assert '' in self.values.keys()
         self.null_value = self.values['']
         self.embeddings = {}
         for symbol, num in self.num_values.items:
-            embedding = torch.zeros(len(self(values)))
+            embedding = torch.zeros(len(self(values)), device=device)
             embedding[num] = 1
             self.embeddings[symbol] = embedding
         self._null_embedding = self.embeddings['']
@@ -53,24 +54,26 @@ class Glove50Embedder(AbstractEmbedder):
        -0.59021 ,  0.55559 ])
     
     @staticmethod
-    def load_glove(path:str="tmp/glove/glove.6B.50d.txt") :
+    def load_glove(path:str="tmp/glove/glove.6B.50d.txt", device="cpu") :
         lines = [l.split() for l in open(path, "r").read().strip().split("\n")]
-        embbeding_list = [(l[0], torch.tensor([float(c) for c in l[1:]])) for l in lines]
+        embbeding_list = [(l[0], torch.tensor([float(c) for c in l[1:]], device=device)) for l in lines]
         del lines
         embbeding_dict = {}
         for word, embeeding in embbeding_list:
-            embbeding_dict[word] = torch.tensor(embeeding)
+            embbeding_dict[word] = torch.tensor(embeeding, device=device)
         return embbeding_dict, embbeding_list
     
     @property
     def null_embedding(self) -> torch.Tensor:
-        return Glove50Embedder.avg.size(0)
+        return self._null_embedding
 
-    def __init__(self, glove_path:str="tmp/glove/glove.6B.50d.txt") -> None:
-        self.embbeding_dict, self.embbeding_list = Glove50Embedder.load_glove(glove_path)
+    def __init__(self, glove_path:str="tmp/glove/glove.6B.50d.txt", device="cpu") -> None:
+        self.device = device
+        self._null_embedding = Glove50Embedder.avg.to(self.device)
+        self.embbeding_dict, self.embbeding_list = Glove50Embedder.load_glove(glove_path, device=device)
     
     def keys(self):
         return self.embbeding_dict.keys()
 
     def __getitem__(self, token:str) -> torch.Tensor:
-        return self.embbeding_dict.get(token,Glove50Embedder.avg)
+        return self.embbeding_dict.get(token,self._null_embedding)

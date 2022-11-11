@@ -1,4 +1,5 @@
 #from .abstract_nfa import FAGraph
+from .version import __version__
 from .fa_graph import FAGraph
 from .fa_segment import NFASegment
 from .fa_state import FAState

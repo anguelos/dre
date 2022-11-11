@@ -1,3 +1,8 @@
+#### Installing requirements
+```bash
+python -c 'import nltk;nltk.download("punkt")'
+```
+
 #### Testing
 
 ```bash

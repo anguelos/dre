@@ -24,8 +24,10 @@ class AbstractObserver(object):
 
 
 class SequenceObserver(AbstractObserver):
-    def __init__(self, embedder:AbstractEmbedder, regex_str:str, regex_parser:type=WordParser, any_symbol="ANY", null_symbol="", require_tokens=True) -> None:
+    def __init__(self, embedder:AbstractEmbedder, regex_str:str, regex_parser:type=WordParser, any_symbol="ANY", null_symbol="", require_tokens=True, observer_b=10., device="cpu") -> None:
         super().__init__(embedder, regex_parser)
+        self.observer_b = observer_b
+        self.device = device
         self.t_regex_parser = type(regex_parser)
         self.fagraph = regex_parser.parse_str(regex_str)
         self.transitions, self.starting_states, self.accepting_states = self.fagraph.nfa_segment.create_transition_matrices()
@@ -33,7 +35,7 @@ class SequenceObserver(AbstractObserver):
             for token in self.transitions.keys():
                 assert token in embedder.keys()
         self.starting_states, self.accepting_states = torch.tensor(self.starting_states), torch.tensor(self.accepting_states)
-        self.transitions.update({k:torch.tensor(v) for k, v in self.transitions.items()})
+        self.transitions.update({k:torch.tensor(v, device=device) for k, v in self.transitions.items()})
         self.null_symbol = null_symbol
         self.any_symbol = any_symbol
         
@@ -43,7 +45,7 @@ class SequenceObserver(AbstractObserver):
         self.transition_symbol_matrix = torch.cat([self._embedder[s][:,None] for s in self.transition_symbols], dim=1)
         self.all_transitions = torch.cat([self.transitions[s][None, :, :] for s in self.transition_symbols], dim=0)
         # all any transitions 
-        self.any_symbol_distance = torch.ones(len(self.transitions))
+        self.any_symbol_distance = torch.ones(len(self.transitions), device=self.device)
         self.any_symbol_distance[0] = 0
 
 
@@ -54,8 +56,8 @@ class SequenceObserver(AbstractObserver):
         else:
             embedded_token = self._embedder[token][:, None]
             similarities = torch.cosine_similarity(self.transition_symbol_matrix, embedded_token, dim=0)
-            shiftsig= lambda x,y: 1/(1+torch.exp(-(y*x)+y/2))
-            return shiftsig(similarities, 7)
+            shiftsig = lambda x,y: 1/(1+torch.exp(-(y*x)+y/2))
+            return shiftsig(similarities, self.observer_b)
         #print(self.transition_symbol_matrix.size())
         #print(embedded_token.size())
         #similarities = torch.matmul( embedded_token, self.transition_symbol_matrix) # TODO (anguelos) what is the difference with torch.dot?
