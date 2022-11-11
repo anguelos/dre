@@ -71,6 +71,7 @@ class Glove50Embedder(AbstractEmbedder):
         self.device = device
         self._null_embedding = Glove50Embedder.avg.to(self.device)
         self.embbeding_dict, self.embbeding_list = Glove50Embedder.load_glove(glove_path, device=device)
+        print("self._null_embedding:",self._null_embedding)
     
     def keys(self):
         return self.embbeding_dict.keys()

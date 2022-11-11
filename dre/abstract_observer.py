@@ -55,9 +55,9 @@ class SequenceObserver(AbstractObserver):
             embedded_token = self._embedder[token][:, None]
         else:
             embedded_token = self._embedder[token][:, None]
-            similarities = torch.cosine_similarity(self.transition_symbol_matrix, embedded_token, dim=0)
-            shiftsig = lambda x,y: 1/(1+torch.exp(-(y*x)+y/2))
-            return shiftsig(similarities, self.observer_b)
+        similarities = torch.cosine_similarity(self.transition_symbol_matrix, embedded_token, dim=0)
+        shiftsig = lambda x,y: 1/(1+torch.exp(-(y*x)+y/2))
+        return shiftsig(similarities, self.observer_b)
         #print(self.transition_symbol_matrix.size())
         #print(embedded_token.size())
         #similarities = torch.matmul( embedded_token, self.transition_symbol_matrix) # TODO (anguelos) what is the difference with torch.dot?
