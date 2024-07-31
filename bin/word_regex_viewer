@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+from matplotlib import pyplot as plt
+import dre
+
+
+if __name__ == '__main__':
+    while True:
+        text = input(">>> ")
+        graph = dre.WordParser().parse_str(text)
+        #graph.draw_graph(graph.nfa_segment)
+        print(graph)
+        transitions, starting_states, accepting_states = graph.nfa_segment.create_transition_matrices()
+        graph.plot(view=True)
+        
+        #print("Transitions:")
+        for symbol, transition in transitions.items():
+            print(symbol,":")
+            print(transition)
+            print(starting_states)
+            print(accepting_states)
+            print("")

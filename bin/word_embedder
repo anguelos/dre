@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+import torch
+import tqdm
+
+torch.set_printoptions(precision=5, sci_mode=False)
+import sys
+sys.path.append("./")
+import dre
+import fargv
+
+
+def main():
+    p = {
+        "embeddings":"tmp/glove/glove.6B.50d.txt",
+        "device":"cpu",
+        "observer_b":10,
+        "embeddings":"test/glove_10samples_50d.txt",
+        "text": "tmp/texts/the_idiot.txt",
+        "regex": "persons of various occupations",
+        "v":2,
+        "top": 10
+    }
+    args, _ = fargv.fargv(p)
+    try:
+        text = open(args.text,"r").read()
+    except:
+        text = args.text
+    
+    if args.v>1:
+        print(f"Loading {args.embeddings} ... ", end="")
+    embedder = dre.Glove50Embedder(args.embeddings, device=args.device)
+    word_parser = dre.WordParser()
+    if args.v>1:
+        print(f"done.")
+    observer = dre.SequenceObserver(embedder=embedder, regex_str=args.regex, 
+        regex_parser=word_parser, device=args.device)
+    results = []
+    with torch.no_grad():
+        for n, sentence  in tqdm.tqdm(enumerate(dre.words_of_sentences(text))):
+            transitions = observer.observe_transitions(sentence)
+            probs, locations = observer.match_transitions(sentence)
+            results.append([probs.max().item(), n, " ".join(sentence)])
+            if args.v > 3:
+                print(f"{n}: {probs.max().item()} #  {' '.join(sentence)}")
+            if args.v >4:
+                print(transitions)
+                print(transitions.size())
+                print(sentence)
+                print(observer.transition_symbols)
+        
+        best_matches = tuple(reversed(sorted(results)))
+        if args.v >0:
+            print("\n".join([f"{r[0]}: {r}" for r in best_matches[:args.top]]))
+
+
+if __name__ == "__main__":
+    main()
+    
