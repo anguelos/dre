@@ -3,6 +3,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib
 from collections import defaultdict
+import fargv
 
 
 class FAGraph(object):
@@ -273,14 +274,14 @@ class FAGraph(object):
         def reduce_states(self):
             new_segment=self.clone()
             transitions,states=new_segment.get_all_states_and_transitions()
-            print "copied transitions{\n\t",
-            print "\n\t".join([str(tr) for tr in transitions])
-            print "\n\t}\n"
+            print("copied transitions{\n\t", end="")
+            print("\n\t".join([str(tr) for tr in transitions]))
+            print("\n\t}\n")
             while any([st.is_removable for st in states]):
                 new_states = []
                 for state in states:
                     if state.is_removable:
-                        print "Removing:",str(state)
+                        print("Removing:",str(state))
                         state.remove()
                     else:
                         new_states.append(state)
@@ -325,7 +326,8 @@ class FAGraph(object):
             res="\n".join([u"%3d:%s"%(k,v) for k,v in enumerate(states)])
             res=u"States:\n"+res+u"\nTransitions:\n"
             for transition in transitions:
-                res+=unicode(transition)+"\n"
+                #res+=unicode(transition)+"\n"
+                res += str(transition) + "\n"
             return res+"\n"
 
         @classmethod
@@ -681,32 +683,28 @@ class FAGraph(object):
         res= "NFA Graph:\n"+str(self.nfa_segment)
         return res
 
-import lm_util
-
-
-def run_re(token_list,embeding_dict,starting_states,ending_states,symbol_transition_mat,null_transition_mat,symbols_mat):
-    current_state=starting_states.copy()
-    for token_str in token_list:
-        p_transitions=np.dot(embeding_dict[token_str],symbols_mat)
-        symbol_transited_states=np.tensordot(current_state, symbol_transition_mat, (1, 0))[0,:,:].T
-        null_transited_states=np.tensordot(symbol_transited_states, null_transition_mat, (1, 0))
-
-
-
-
 
 if __name__=="__main__":
-    p={"r":"a?","s":"aaa","a":"dabc"}
-    p,_=lm_util.get_arg_switches(p)
-    re_str=p["s"]
-    alphabet={v:k for k,v in enumerate(p["a"])}
+    import lm_util
+    def run_re(token_list,embeding_dict,starting_states,ending_states,symbol_transition_mat,null_transition_mat,symbols_mat):
+        current_state=starting_states.copy()
+        for token_str in token_list:
+            p_transitions=np.dot(embeding_dict[token_str],symbols_mat)
+            symbol_transited_states=np.tensordot(current_state, symbol_transition_mat, (1, 0))[0,:,:].T
+            null_transited_states=np.tensordot(symbol_transited_states, null_transition_mat, (1, 0))
+
+    p={"regex":"a?","string":"aaa","alphabet":"dabc"}
+    p,_=fargv.fargv(p)
+    re_str=p.string
+    alphabet={v:k for k,v in enumerate(p.alphabet)}
     g=FAGraph()
-    g.parse_re(p["r"],alphabet)
-    print str(g)
-    FAGraph.draw_graph(g.nfa_segment,re_str=p["r"])
-    #g.draw_graph(transitions_are_edges=False)
-    #reduced_g=g.nfa_segment.reduce_states()
-    FAGraph.draw_graph(reduced_g,re_str=p["r"])
+    g.parse_re(p.regex, alphabet)
+    print(str(g))
+    FAGraph.draw_graph(g.nfa_segment,re_str=p.regex)
+    reduced_g=g.nfa_segment.reduce_states()
+    FAGraph.draw_graph(reduced_g,re_str=p.regex)
+    plt.show()
     non_e=reduced_g.substitute_e_transitions()
-    #g.draw_graph(transitions_are_edges=False)
-    print str(non_e)
+    FAGraph.draw_graph(non_e, re_str=p.regex)
+    plt.show()
+    print(str(non_e))

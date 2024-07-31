@@ -1,7 +1,9 @@
 import numpy as np
-import finit_automata
+#import finit_automata
+from .finit_automata import FAGraph
 from matplotlib import pyplot as plt
 import torch
+
 """
 Active alphabet the part of an alphabet that participates in the Reg-Expr.
 The set of all possible non-null transitions in an eNFA.
@@ -72,8 +74,8 @@ class Regexer(torch.nn.Module):
         #time_oh_batch=batched_time_onehot.transpose(0,1).transpose(1,2).contiguous()
         for t in range(seq_len):
             current_states=torch.matmul(current_states,self.all_transitions)
-            print current_states.size()
-            print time_onehot_batch[t,:,:,None].size()
+            print(current_states.size())
+            print(time_onehot_batch[t,:,:,None].size())
             outgoing_states=current_states*time_onehot_batch[t,:,:,None]
             outgoing_states=outgoing_states.max(dim=0)[0]
             current_states=outgoing_states
@@ -127,13 +129,13 @@ def apply_enfa_np(current_state,p_transition,symbol_transition_mat,null_transiti
 
 
 def run_torch(regex,strlist,symbol2idx={'a':0,'b':1,'c':2}):
-    g=finit_automata.FAGraph()
+    g=FAGraph()
     g.parse_re(regex,"abc")
     oh_seq=torch_embed_inputs(strlist,symbol2idx)
     transition_dict,starting_states,accepting_states= g.nfa_segment.create_transition_matrices()
     #print transition_dict
     reg=Regexer(transition_dict,starting_states,accepting_states)
-    print reg(oh_seq)
+    print(reg(oh_seq))
 
 
 if __name__=="__main__":
@@ -143,7 +145,7 @@ if __name__=="__main__":
     regex=sys.argv[2]
     run_torch(regex,["a","aabb","bababa"])
     sys.exit()
-    g=finit_automata.FAGraph()
+    g=FAGraph()
     g.parse_re(regex,"abc")
     transition_dict,starting_states,accepting_states= g.nfa_segment.create_transition_matrices()
     import time
@@ -151,11 +153,11 @@ if __name__=="__main__":
     t=time.time()
     for _ in range(1000):
         status= simple_regex_match(seq*100,transition_dict,starting_states,accepting_states)
-    print "R:{} | {} | Accepted:{} \nRun  100000 times in  {} msec".format(regex,seq,status,int((time.time()-t)*1000))
+    print("R:{} | {} | Accepted:{} \nRun  100000 times in  {} msec".format(regex,seq,status,int((time.time()-t)*1000)))
     t=time.time()
     for _ in range(1000):
         status= re.match(regex,seq*100)
-    print "R:{} | {} | Accepted:{} \nRun  100000 times in  {} msec".format(regex,seq,status,int((time.time()-t)*1000))
-    #finit_automata.FAGraph.draw_graph(g.nfa_segment, re_str=regex)
-    #plot_transition_matrices(seq,transition_dict,starting_states,accepting_states)
-    #plt.show()
+    print("R:{} | {} | Accepted:{} \nRun  100000 times in  {} msec".format(regex,seq,status,int((time.time()-t)*1000)))
+    FAGraph.draw_graph(g.nfa_segment, re_str=regex)
+    plot_transition_matrices(seq,transition_dict,starting_states,accepting_states)
+    plt.show()
