@@ -39,7 +39,7 @@ class WordParser(Parser):
     tokens = WordLexer.tokens
 
     # Un-comment the following line to output the parser logs for debugging any conflicts
-    debugfile = 'parser.out'
+    # debugfile = 'parser.out'  # Uncomment to enable a debugging dump to this file
 
     # This sets the order of execution. The last values will have a higher precedence
     precedence = (

@@ -1,4 +1,4 @@
-from dre.fa_state import FAState
+from .fa_state import FAState
 
 
 class FATransition:
@@ -7,7 +7,7 @@ class FATransition:
     The class is a directed edge in the graph representation of a finite automata.
     Essentially, it is a tuple of the form (source, destination, symbol_str).
     """
-    def __init__(self, symbol_str="", caption="", source=None, destination=None):
+    def __init__(self, symbol_str="", caption="", source: FAState = None, destination: FAState = None):
         assert source is not None
         assert destination is not None
         if symbol_str == "" and caption == "":
@@ -22,7 +22,7 @@ class FATransition:
             destination._incoming.append(self)
 
     @property
-    def src_id(self):
+    def src_id(self) -> int:
         """id getter for the source state.
 
         Returns:
@@ -34,7 +34,7 @@ class FATransition:
             return -2
 
     @property
-    def dst_id(self):
+    def dst_id(self) -> int:
         """id getter for the destination state.
 
         Returns:
@@ -46,7 +46,7 @@ class FATransition:
             return -2
 
     @property
-    def source(self):
+    def source(self) -> FAState:
         """Source getter.
 
         Returns:
@@ -55,7 +55,7 @@ class FATransition:
         return self._source
 
     @property
-    def destination(self):
+    def destination(self) -> FAState:
         """Destiantion getter.
 
         Returns:
@@ -63,20 +63,20 @@ class FATransition:
         """
         return self._destination
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.src_id}->T|{self.caption}| {self.dst_id}"
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return len(self.symbol_str) > 0
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         # TODO(anguelos) find a better hash
         if self._source is not None and self._destination is not None:
             return hash(self._source)*hash(self._destination)*hash(self.symbol_str)
         raise ValueError("Transition is not connected to a state")
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         return str(self) < str(other)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return str(self) == str(other)

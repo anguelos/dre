@@ -8,8 +8,8 @@ from collections import defaultdict
 class FAGraph(object):
     class FATransition(object):
         def __init__(self, symbol_str="", caption="\\0"):
-            self.symbol_str=symbol_str
-            self.caption=caption
+            self.symbol_str = symbol_str
+            self.caption = caption
             self._source = None
             self._destination = None
 
@@ -35,85 +35,84 @@ class FAGraph(object):
         def destination(self):
             return self._destination
 
-        def set_source(self,state):
-            self._source=state
+        def set_source(self, state):
+            self._source = state
             if self not in state._outgoing:
                 state._outgoing.append(self)
 
-        def set_destination(self,state):
-            self._destination=state
+        def set_destination(self, state):
+            self._destination = state
             if self not in state._incoming:
                 state._incoming.append(self)
 
         def remove(self):
-            dst=self._destination
-            dst._incoming=[tr for tr in dst._incoming if tr is not self]
-            src=self._source
-            src._outgoing=[tr for tr in src._outgoing if tr is not self]
-            self._destination=None
-            self._source=None
+            dst = self._destination
+            dst._incoming = [tr for tr in dst._incoming if tr is not self]
+            src = self._source
+            src._outgoing = [tr for tr in src._outgoing if tr is not self]
+            self._destination = None
+            self._source = None
 
         def __str__(self):
-            return "%2d->T{%3s}->%2d"%(self.src_id,self.caption,self.dst_id)
+            return f"{self.src_id:2d}->T|{self.caption:3s}| {self.dst_id:2d}"
+            #return "%2d->T{%3s}->%2d"%(self.src_id,self.caption,self.dst_id)
 
         def __bool__(self):
             return len(self.symbol_str) > 0
-        def __bool__ (self):
-            return len(self.symbol_str) > 0
 
-        def clone(self,source=None,destination=None):
-            res=FAGraph.FATransition(symbol_str=self.symbol_str, caption=self.caption)
-            res._source=source
-            res._destination=destination
+        def clone(self, source=None, destination=None):
+            res = FAGraph.FATransition(symbol_str=self.symbol_str, caption=self.caption)
+            res._source = source
+            res._destination = destination
             return res
 
         @classmethod
-        def create_transition(cls, symbol_str=".",caption="\\u2205"):
-            return cls(symbol_str=symbol_str,caption=caption)
+        def create_transition(cls, symbol_str=".", caption="\\u2205"):
+            return cls(symbol_str=symbol_str, caption=caption)
 
     class FAState(object):
-        def __init__(self,visual_caption="NA"):
-            self.is_accepting=False
-            self.visual_caption=visual_caption
-            self.id=None
+        def __init__(self, visual_caption="NA"):
+            self.is_accepting = False
+            self.visual_caption = visual_caption
+            self.id = None
             self._incoming = []
             self._outgoing = []
             self.is_starting = None
             self.is_ending = None
 
-        def add_incoming(self,transition):
+        def add_incoming(self, transition):
             self._incoming.append(transition)
 
-        def add_outgoing(self,transition):
+        def add_outgoing(self, transition):
             self._outgoing.append(transition)
 
-        def remove_incoming(self,state_or_transition,tolerate_non_existing=False):
-            if isinstance(state_or_transition,FAGraph.FAState):
-                state=state_or_transition
-                new_incoming=[i for i in self._incoming if i.source is not state]
-                if not tolerate_non_existing and len(new_incoming)==len(self._incoming):
-                    raise ValueError
-                self._incoming=new_incoming
-            elif isinstance(state_or_transition,FAGraph.FATransition):
-                transition=state_or_transition
-                new_incoming=[i for i in self._incoming if i is not transition]
-                if not tolerate_non_existing and len(new_incoming)==len(self._incoming):
-                    raise ValueError
-                self._incoming=new_incoming
-
-        def remove_outgoing(self,state_or_transition,tolerate_non_existing=True):
-            if isinstance(state_or_transition,FAGraph.FAState):
+        def remove_incoming(self, state_or_transition, tolerate_non_existing=False):
+            if isinstance(state_or_transition, FAGraph.FAState):
                 state = state_or_transition
-                new_outgoing=[i for i in self._outgoing if i.destination is not state]
-                if not tolerate_non_existing or len(new_outgoing)==len(self._outgoing):
+                new_incoming = [i for i in self._incoming if i.source is not state]
+                if not tolerate_non_existing and len(new_incoming) == len(self._incoming):
                     raise ValueError
-                self._outgoing=new_outgoing
-            elif isinstance(state_or_transition,FAGraph.FATransition):
+                self._incoming = new_incoming
+            elif isinstance(state_or_transition, FAGraph.FATransition):
                 transition = state_or_transition
-                new_outgoing=[i for i in self._outgoing if i is not transition]
-                if not tolerate_non_existing and len(new_outgoing)==len(self._outgoing):
+                new_incoming = [i for i in self._incoming if i is not transition]
+                if not tolerate_non_existing and len(new_incoming) == len(self._incoming):
                     raise ValueError
-                self._outgoing=new_outgoing
+                self._incoming = new_incoming
+
+        def remove_outgoing(self, state_or_transition, tolerate_non_existing=True):
+            if isinstance(state_or_transition, FAGraph.FAState):
+                state = state_or_transition
+                new_outgoing = [i for i in self._outgoing if i.destination is not state]
+                if not tolerate_non_existing or len(new_outgoing) == len(self._outgoing):
+                    raise ValueError
+                self._outgoing = new_outgoing
+            elif isinstance(state_or_transition, FAGraph.FATransition):
+                transition = state_or_transition
+                new_outgoing = [i for i in self._outgoing if i is not transition]
+                if not tolerate_non_existing and len(new_outgoing) == len(self._outgoing):
+                    raise ValueError
+                self._outgoing = new_outgoing
 
         @property
         def incoming_states(self):
@@ -132,33 +131,33 @@ class FAGraph(object):
             return tuple(self._outgoing)
 
         def clone(self):
-            res=FAGraph.FAState(visual_caption=self.visual_caption)
-            res.is_ending=self.is_ending
-            res.is_starting=self.is_starting
-            res.id=self.id
+            res = FAGraph.FAState(visual_caption=self.visual_caption)
+            res.is_ending = self.is_ending
+            res.is_starting = self.is_starting
+            res.id = self.id
             return res
 
         def get_descendant_count(self):
             return len(self.get_descendants())
 
         def get_descendants(self):
-            visited=set()
+            visited = set()
             self._get_descendants(visited)
             return list(visited)
 
-        def _get_descendants(self,visited):
-            children=[tr.destination for tr in self._outgoing]
+        def _get_descendants(self, visited):
+            children = [tr.destination for tr in self._outgoing]
             for child in children:
                 if child not in visited:
                     visited.add(child)
                     child._get_descendants(visited)
 
         def get_children_and_null_descendants(self):
-            children_dict={}
+            children_dict = {}
             for transition in self.outgoing_transitions:
                 if bool(transition):
                     children_dict[transition.symbol_str]=transition.destination
-            children_dict[None]=[self]+self._get_null_descendants([])
+            children_dict[None] = [self]+self._get_null_descendants([])
             return children_dict
 
         def get_non_null_children_and_their_null_descendants(self):
@@ -167,24 +166,24 @@ class FAGraph(object):
             e*s union s*e
             :return:
             """
-            children_dict=defaultdict(lambda:[])
+            children_dict = defaultdict(lambda: [])
             for transition in self.outgoing_transitions:
-                if bool(transition): # symbol following Null
-                    children=transition.destination._get_null_descendants([])
+                if bool(transition):  # symbol following Null
+                    children = transition.destination._get_null_descendants([])
                     if transition.destination not in children:
                         children.append(transition.destination)
-                    children_dict[transition.symbol_str]+=(children)
+                    children_dict[transition.symbol_str] += (children)
 
-            null_descendants=self._get_null_descendants([])
+            null_descendants = self._get_null_descendants([])
             for null_child in null_descendants:
                 for transition in null_child._outgoing:
-                    if transition: # A non-null child of a null children
+                    if transition:  # A non-null child of a null children
                         children_dict[transition.symbol_str].append(transition.destination)
-            children_dict={k:list(set(v)) for k,v in list(children_dict.items())}
+            children_dict = {k: list(set(v)) for k, v in list(children_dict.items())}
             return children_dict
 
-        def _get_null_descendants(self,visited):
-            result=[]
+        def _get_null_descendants(self, visited):
+            result = []
             for transition in self.outgoing_transitions:
                 if (transition.destination not in visited) and not bool(transition):
                     result.append(transition.destination)
@@ -193,25 +192,25 @@ class FAGraph(object):
 
         @property
         def is_removable(self):
-            all_nodes=self.incoming_states + self.outgoing_states+(self,)
-            if len(all_nodes)!=len(set(all_nodes)):
-                return False # Can't be allowed to create
-            if len(self._outgoing)==0 or len(self._incoming)==0:
+            all_nodes = self.incoming_states + self.outgoing_states+(self,)
+            if len(all_nodes) != len(set(all_nodes)):
+                return False  # Can't be allowed to create
+            if len(self._outgoing) == 0 or len(self._incoming) == 0:
                 return False
-            if len(self._outgoing)==1 and not self._outgoing[0]:
+            if len(self._outgoing) == 1 and not self._outgoing[0]:
                 return True
             if len(self._incoming) == 1 and not self._incoming[0]:
                 return True
             return False
 
         def remove(self):
-            if len(self._outgoing)==1 and not(self._outgoing[0]):
-                replacing_state=self._outgoing[0].destination
+            if len(self._outgoing) == 1 and not self._outgoing[0]:
+                replacing_state = self._outgoing[0].destination
                 for tr in self._incoming:
                     tr.set_destination(replacing_state)
                 replacing_state.remove_incoming(self)
-            elif len(self._incoming)==1 and not(self._incoming[0]):
-                replacing_state=self._incoming[0].source
+            elif len(self._incoming) == 1 and not self._incoming[0]:
+                replacing_state = self._incoming[0].source
                 for tr in self._outgoing:
                     tr.set_source(replacing_state)
                 replacing_state.remove_outgoing(self)
@@ -219,41 +218,42 @@ class FAGraph(object):
                 raise ValueError
 
         def __str__(self):
-            id=self.id
-            start_str=">" if self.is_starting else " "
+            node_id = self.id
+            start_str = ">" if self.is_starting else " "
             end_str = "<" if self.is_ending else " "
-            if id is None:
-                id=-1
-            return "%sS{%d|%d>%d}%s"%(start_str,id,len(self.incoming_transitions),len(self.outgoing_transitions),end_str)
+            if node_id is None:
+                node_id = -1
+            node_str = f"S{'{'}{node_id}|{len(self.incoming_transitions)}>{self.outgoing_transitions}{'}'}"
+            return f"{start_str}{node_str}{end_str}"
+            #return "%sS{%d|%d>%d}%s"%(start_str, node_id, len(self.incoming_transitions), len(self.outgoing_transitions), end_str)
 
-        def __lt__(self,other):
-            python_id_cmp=.5*(id(self)<id(other))
-            return self.id+python_id_cmp<other.id
-
+        def __lt__(self, other):
+            python_id_cmp = .5 * (id(self) < id(other))
+            return self.id + python_id_cmp < other.id
 
 
     class NFASegment(object):
         def __init__(self, _=None, source=None, sink=None):
-            self.source=source
-            self.sink=sink
+            self.source = source
+            self.sink = sink
 
-        def get_nfa_matrices(self,embedding_dict):
+        def get_nfa_matrices(self, embedding_dict):
             transitions, states = self.get_all_states_and_transitions()
-            null_transitions=[tr for tr in transitions if not tr]
+            null_transitions = [tr for tr in transitions if not tr]
             symbol_transitions = [tr for tr in transitions if tr]
-            symbols={symbol:n for n,symbol in enumerate(sorted(set([tr.symbol_str for tr in valid_transitions])))}
-            symbols_mat=np.array([embedding_dict[symbol] for symbol in list(symbols.keys())])
-            symbol_transition_mat=np.zeros([len(states),len(states),len(symbols)])
-            null_transition_mat=np.eye(len(states))
-            starting_states=np.zeros(len(states))
+            symbols = {symbol: n for n, symbol in enumerate(sorted(set([tr.symbol_str for tr in valid_transitions])))}
+            symbols_mat = np.array([embedding_dict[symbol] for symbol in list(symbols.keys())])
+            symbol_transition_mat = np.zeros([len(states), len(states), len(symbols)])
+            null_transition_mat = np.eye(len(states))
+            starting_states = np.zeros(len(states))
             ending_states = np.zeros(len(states))
             for state in states:
                 if state.is_starting:
-                    starting_states[state.id]=1
+                    starting_states[state.id] = 1
                 if state.is_ending:
-                    ending_states[state.id]=1
+                    ending_states[state.id] = 1
             for tr in symbol_transitions:
-                symbol_transition_mat[tr.destination.id,tr.source.id,symbols[tr]]=1
+                symbol_transition_mat[tr.destination.id, tr.source.id, symbols[tr]] = 1
             for tr in null_transitions:
                 null_transition_mat[tr.destination.id,tr.source.id]=1
             # null states transit infinetly
