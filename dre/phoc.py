@@ -4,26 +4,6 @@ import torch
 from torch.nn import functional as F
 
 
-class Alphabet:
-    @staticmethod
-    def load_alphabet_from_string(s: str):
-        pass
-    def __init__(self, code2symbol, symbol2code, ):
-        pass
-    def __repr__(self):
-        pass
-    def __get_item__(self, v):
-        pass
-    def encode_symbol(self, s:str)->int:
-        pass
-    def decode_symbol(self, s:int)->str:
-        pass
-    def encode_sequence(self, s: str)->torch.Tensor:
-        pass
-    def __len__(self):
-        pass
-
-
 def seq2oh(seq: str, alphabet: str) -> torch.Tensor:
     """Convert a sequence of characters to a one-hot tensor"""
     oh = torch.zeros(len(alphabet), len(seq))
@@ -39,7 +19,7 @@ def oh2seq(oh: torch.Tensor, alphabet: str) -> str:
 
 def get_single_phoc_slices(tc_seq: torch.Tensor, split_count):
     ct_seq = tc_seq.swapaxes(0, 1)
-    res = F.avg_pool1d(input=ct_seq, split_count)
+    res = F.adaptive_avg_pool1d(input=ct_seq, output_size=split_count)
     return res.view([1, 1, -1])
 
 def get_single_phoc(btc_seq: torch.Tensor, pyramid: List[int]):

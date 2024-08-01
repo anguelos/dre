@@ -11,6 +11,8 @@ from collections import defaultdict
 from typing import Union
 
 
+# SLY hacks around the need to define these but linters dont tolerate it
+ANY, START, END, WORD, ASTERISK, QUESTIONMARK, PLUS, OR, LEFT_PAR, RIGHT_PAR = (None,) * 10
 
 class WordLexer(Lexer):
     # This is the set of tokens we are exporting to the Parser
@@ -20,7 +22,7 @@ class WordLexer(Lexer):
     # Any literals we did not define as tokens, will be available for usage in the Parser
     literals = {'.', '!'}
 
-    # The definition of each token in a regex pattern - Notice that the order MATTERS!! First match will be taken
+    #  The definition of each token in a regex pattern - Notice that the order MATTERS!! First match will be taken
     ANY = r'\.'
     START = r'\^'
     END = r'\$'
@@ -50,9 +52,9 @@ class WordParser(Parser):
     def __init__(self):
         super().__init__()
         self.lexer = WordLexer()
-    
+
     def parse_str(self, text):
-        tokens = self.lexer.tokenize(text) # Creates a generator of tokens
+        tokens = self.lexer.tokenize(text)  # Creates a generator of tokens
         result = self.parse(tokens)
         result.re_str = text
         return result
@@ -104,7 +106,6 @@ class WordParser(Parser):
     def expr(self, p):
         print("E_E", tuple(p))
         return NFASegment.create_concatenate_segment(p[0], p[1])
-        
 
     @_("expr OR expr")
     def orexpr(self, p):
@@ -143,7 +144,7 @@ class WordParser(Parser):
         return NFASegment.create_transition_segment(symbol_str=WordLexer.ANY, caption=f"Any")
 
     @_('WORD')
-    def literal(self,p):
+    def literal(self, p):
         print(f"LITERAL:{repr(p[0])}")
         return(p[0])
         #self.stack.append(p[0])

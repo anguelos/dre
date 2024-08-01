@@ -1,3 +1,10 @@
+doc/relevant_papers/
+.pytest_cache
+.coverage
+parser.out
+fsm.gv
+fsm.gv.pdf
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

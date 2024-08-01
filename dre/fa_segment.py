@@ -1,5 +1,5 @@
 from collections import defaultdict
-from lib2to3.pgen2.pgen import NFAState
+#from lib2to3.pgen2.pgen import NFAState
 import numpy as np
 from typing import List, Set, Tuple, Union
 
@@ -17,32 +17,31 @@ class NFASegment(object):
 
     def is_dfa(self):
         transitions, states = self.get_all_states_and_transitions()
-        non_e_transitions=all([bool(tr) for tr in transitions])
-        no_multiple_outgoing=[]
+        non_e_transitions = all([bool(tr) for tr in transitions])
+        no_multiple_outgoing = []
         for state in states:
-            outgoing_symbols=[tr.symbol_str for tr in state._outgoing]
-            no_multiple_outgoing.append(len(outgoing_symbols)==len(set(outgoing_symbols)))
+            outgoing_symbols = [tr.symbol_str for tr in state._outgoing]
+            no_multiple_outgoing.append(len(outgoing_symbols) == len(set(outgoing_symbols)))
         return non_e_transitions and all(no_multiple_outgoing)
 
     def reduce_states(self):
         tmp_segment = self.clone()
-        _, states=tmp_segment.get_all_states_and_transitions()
+        _, states = tmp_segment.get_all_states_and_transitions()
         removable = [st for st in states if tmp_segment.can_remove(st)]
-        i=1
+        i = 1
         while len(removable):
             tmp_segment = tmp_segment.clone_without(removable[0])
-            _, states=tmp_segment.get_all_states_and_transitions()
+            _, states = tmp_segment.get_all_states_and_transitions()
             removable = [st for st in states if tmp_segment.can_remove(st)]
-            i+=1
+            i += 1
         return tmp_segment
-
 
     def get_all_states_and_transitions(self) -> Tuple[Tuple[FAState], Tuple[FAState]]:
         transitions, states = NFASegment._get_all_states_and_transitions(self.source, set(), set())
         return tuple(sorted(transitions)), tuple(sorted(states))
 
     @staticmethod
-    def _get_all_states_and_transitions(state:FAState,visited_states:Set[FAState], visited_transitions:Set[FATransition]) -> Tuple[Set[FAState], Set[FAState]]:
+    def _get_all_states_and_transitions(state: FAState, visited_states: Set[FAState], visited_transitions: Set[FATransition]) -> Tuple[Set[FAState], Set[FAState]]:
         result_states = visited_states.union({state})
         result_transitions = visited_transitions.copy()
         for incoming in state.incoming_transitions:
@@ -60,35 +59,34 @@ class NFASegment(object):
                 result_transitions.update(new_transitions)
         return result_transitions, result_states
 
-
     def clone(self):
-        transitions,states = self.get_all_states_and_transitions()
+        transitions, states = self.get_all_states_and_transitions()
         assert self.sink in states
-        old2new_states={s:s.clone_disconnected() for s in states}
+        old2new_states = {s: s.clone_disconnected() for s in states}
         #old2new_transitions = {t: t.clone() for t in transitions}
         old2new_transitions = {}
         for t in transitions:
-            old2new_transitions[t] = FATransition(source=old2new_states[t._source], destination=old2new_states[t._destination], symbol_str=t.symbol_str,caption=t.caption)
-        new_source = old2new_states[self.source] # source of the segment
+            old2new_transitions[t] = FATransition(source=old2new_states[t._source], destination=old2new_states[t._destination], symbol_str=t.symbol_str, caption=t.caption)
+        new_source = old2new_states[self.source]  # source of the segment
         new_sink = old2new_states[self.sink]
         return NFASegment(source=new_source, sink=new_sink)
 
-    def can_remove(self, s:NFAState):
+    def can_remove(self, s: FAState):
         if s is self.source or s is self.sink:
             return False
-        if len(s._incoming)!=1 or len(s._outgoing)!=1:
+        if len(s._incoming) != 1 or len(s._outgoing) != 1:
             return False
         symbols = s._incoming[0].symbol_str, s._outgoing[0].symbol_str
-        if "" not in symbols: # A chain of symbols is not removable
+        if "" not in symbols:  # A chain of symbols is not removable
             return False
-        if len(s._incoming)!=1 or len(s._outgoing)!=1:
+        if len(s._incoming) != 1 or len(s._outgoing) != 1:
             return False
         return True
 
     def clone_without(self, rm_state):
         assert self.can_remove(rm_state)
-        transitions, states=self.get_all_states_and_transitions()
-        old2new_states={s:s.clone_disconnected() for s in states if s is not rm_state}
+        transitions, states = self.get_all_states_and_transitions()
+        old2new_states = {s: s.clone_disconnected() for s in states if s is not rm_state}
         new_source = old2new_states[self.source]
         new_sink = old2new_states[self.sink]
         keep_transitions = [tr for tr in transitions if not (rm_state is tr._source) and not (rm_state is tr._destination)]
@@ -97,7 +95,7 @@ class NFASegment(object):
         new_after = old2new_states[rm_state._outgoing[0]._destination]
         new_symbols = rm_state._incoming[0].symbol_str, rm_state._outgoing[0].symbol_str
 
-        old2new_transitions = {0:FATransition(source = new_before, destination=new_after, symbol_str=new_symbols[0]+new_symbols[1])}
+        old2new_transitions = {0: FATransition(source = new_before, destination=new_after, symbol_str=new_symbols[0]+new_symbols[1])}
         for t in keep_transitions:
             source=old2new_states[t._source]
             destination=old2new_states[t._destination]
