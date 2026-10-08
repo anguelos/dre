@@ -10,7 +10,7 @@ symbol_trans=np.array([[[0,1,0],[0,0,1],[0,0,0]],[[0,0,1],[0,0,0],[0,0,0]]]);
 emb={"a":[0,1],"b":[1,0]};
 #emb_str=lambda x:np.array([emb[ch] for ch in x],dtype="float32")*.9+.1*np.random.rand(len(x),2)
 emb_str=lambda x:np.array([emb[ch] for ch in x],dtype="float32")+((0.01*np.arange(len(x)))[:,None])
-print emb_str("aaaa").shape
+print(emb_str("aaaa").shape)
 emb2symbolidx=np.array([[0.,1.],[1.,0.]])
 get_p_transition=lambda x:np.dot(emb_str(x),emb2symbolidx)
 
@@ -20,17 +20,17 @@ def iterate_state(current_state,p_transition,symbol_transition_mat,null_transiti
     all_outgoing_states=np.dot(current_state, symbol_transition_mat)
     null_transited_states =np.dot(all_outgoing_states,
                                    null_transition_mat)#.max(axis=1)
-    print np.dot(current_state,combined)==null_transited_states
-    print combined
+    print(np.dot(current_state,combined)==null_transited_states)
+    print(combined)
     symbol_transited_states=(null_transited_states * p_transition[:,:,None]).max(axis=1)
 
-    print
-    print 'Tr :\t',str(p_transition[:,:,None]).replace("\n","\n\t")
-    print "Cur:\t",str(current_state).replace("\n","\n\t")
-    print "Out:\t",str(all_outgoing_states).replace("\n","\n\t")
-    print "E  :\t",str(null_transited_states).replace("\n","\n\t")
-    print "F  :\t",str((null_transited_states * p_transition[:, :, None])).replace("\n","\n\t")
-    print "Res:\t",str(symbol_transited_states).replace("\n","\n\t")
+    print()
+    print('Tr :\t',str(p_transition[:,:,None]).replace("\n","\n\t"))
+    print("Cur:\t",str(current_state).replace("\n","\n\t"))
+    print("Out:\t",str(all_outgoing_states).replace("\n","\n\t"))
+    print("E  :\t",str(null_transited_states).replace("\n","\n\t"))
+    print("F  :\t",str((null_transited_states * p_transition[:, :, None])).replace("\n","\n\t"))
+    print("Res:\t",str(symbol_transited_states).replace("\n","\n\t"))
     return symbol_transited_states
 
 def estimate_seq(symbol_seq):
@@ -40,7 +40,7 @@ def estimate_seq(symbol_seq):
         p_transition=p_transitions[n:n+1,:]
         #symbol=symbol_seq[n]
         current_state=iterate_state(current_state,p_transition,symbol_trans,null_trans)
-        print '|'.join(symbol_seq[:n+1]),(current_state*ending_states).max()
+        print('|'.join(symbol_seq[:n+1]),(current_state*ending_states).max())
 
 sys.argv.append("baaabbbaaabb")
 

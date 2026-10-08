@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+import torch
+import tqdm
+
+torch.set_printoptions(precision=5, sci_mode=False)
+import sys
+sys.path.append("./")
+import dre
+import fargv
+
+
+def main():
+    p = {
+        "embeddings":"tmp/glove/glove.6B.50d.txt",
+        "device":"cpu",
+        "observer_b":10,
+        "embeddings":"test/glove_10samples_50d.txt",
+        "text": "tmp/texts/the_idiot.txt",
+        "regex": "persons of various occupations",
+        "verbosity":2,
+        "top": 10
+    }
+    args, _ = fargv.fargv(p)
+    try:
+        text = open(args.text,"r").read()
+    except:
+        text = args.text
+    
+    if args.verbosity>1:
+        print(f"Loading {args.embeddings} ... ", end="")
+    embedder = dre.Glove50Embedder(args.embeddings, device=args.device)
+    automaton = dre.compile_regex(args.regex)
+    if args.verbosity>1:
+        print(f"done.")
+    sentences = list(tqdm.tqdm(dre.words_of_sentences(text)))
+    observer = dre.SigmoidObserver(dre.Vocabulary.from_documents(sentences), embedder, dre.CosineDistance(),
+        b=args.observer_b, device=args.device)
+    matcher = dre.ViterbiMatcher(device=torch.device(args.device))
+    with torch.no_grad():
+        emissions = observer.observe(automaton)
+        probs = matcher.scores(automaton, emissions, [observer.vocabulary.encode(sentence) for sentence in sentences])
+        results = []
+        for n, sentence in enumerate(sentences):
+            results.append([probs[n].item(), n, " ".join(sentence)])
+            if args.verbosity > 3:
+                print(f"{n}: {probs[n].item()} #  {' '.join(sentence)}")
+            if args.verbosity >4:
+                print(emissions[observer.vocabulary.encode(sentence)])
+                print(sentence)
+                print(automaton.symbols)
+        
+        best_matches = tuple(reversed(sorted(results)))
+        if args.verbosity >0:
+            print("\n".join([f"{r[0]}: {r}" for r in best_matches[:args.top]]))
+
+
+if __name__ == "__main__":
+    main()
