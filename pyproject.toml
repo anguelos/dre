@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 160
+
+[tool.ruff]
+line-length = 160
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths =["test/unit_coverage", "test/bugfixing", "test/corner_cases"]
+
+[tool.coverage.run]
+source = ["src/dre"]
+
+[tool.coverage.report]
+show_missing = true

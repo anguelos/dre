@@ -1,3 +1,5 @@
+doc/relevant_papers/
+doc/ecir2027/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -102,3 +104,29 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# claude
+.claude/
+
+# Project-specific temporary outputs
+tmp/
+tmp*
+examples/ir/data/
+examples/semantics/data/
+examples/phoc_semantic/data/
+doctest-output/
+*.gv
+*.gv.pdf
+
+# PLY parser generated files
+parser.out
+src/dre/parsetab.py
+
+# Backup files
+*.bak
+
+# IDE
+.idea/
+
+# Word vector cache
+.word_vectors_cache/

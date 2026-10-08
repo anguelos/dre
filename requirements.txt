@@ -1,0 +1,27 @@
+# Core (always required)
+numpy
+sly
+fargv
+matplotlib
+networkx
+torch
+tqdm
+pylelemmatize
+
+# Optional — install as needed
+# jax            (pip install dre[jax])
+# nltk           (pip install dre[nltk])  better sentence/word tokenization than the built-in naive one
+
+# Test
+pytest
+pytest-cov
+coverage
+
+# Dev
+ipython
+graphviz
+
+# Docs
+sphinx
+sphinx-rtd-theme
+myst-parser
