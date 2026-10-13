@@ -1,4 +1,0 @@
-# Packages needed only by this experiment, on top of dre's own requirements (../../requirements.txt).
-# The trainer and PHOC are imported from ../../src (the Makefile sets PYTHONPATH).
-rapidfuzz         # baseline_lookup.py, evaluate_imputation.py: Levenshtein nearest-word lookup
-fasttext          # evaluate_imputation.py: the fastText subword baseline (optional: its rows are skipped without it)
