@@ -151,3 +151,7 @@ examples/query_augmentation/data/*
 !examples/query_augmentation/data/runs/
 examples/query_augmentation/data/runs/*
 !examples/query_augmentation/data/runs/re2rnn.tar.gz
+
+# Root-level notes (agent guides, drafts) stay local; only the README is published
+/*.md
+!/README.md
