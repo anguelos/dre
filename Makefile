@@ -1,4 +1,4 @@
-.PHONY: clean test coverage doc build install
+.PHONY: clean test coverage doc build install install-dev
 
 clean:
 	rm -rf build dist src/*.egg-info .pytest_cache .coverage coverage.xml docs/_build tmp
@@ -19,3 +19,6 @@ build:
 
 install:
 	pip install -e .
+
+install-dev:
+	pip install -e ".[dev]"

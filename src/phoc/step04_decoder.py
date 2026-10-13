@@ -3,7 +3,8 @@
 # initial state and conditions every step, and the GRU emits one character at a time until an end symbol. Trained on
 # corrupted inputs and clean targets (see train_decoder.py) it becomes a spelling corrector that needs no dictionary,
 # so it can also produce words it never saw; given a PHOC predicted from elsewhere (an image, a meaning) it spells it.
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
+from collections.abc import Sequence
 
 import torch
 from pylelemmatize.fast_mapper import LemmatizerBMP
@@ -16,7 +17,7 @@ END, START = 0, 1  # output symbols 0 and 1; the alphabet's characters follow
 
 class PHOCToString(nn.Module):
     def __init__(self, alphabet: str, hidden: int = 512, embedding: int = 64, condition: int = 128, levels: Sequence[int] = (1, 2, 3, 5),
-                 max_len: int = 20, max_output: int = 24, mapping: Optional[Dict[str, str]] = None, dropout: float = 0.1,
+                 max_len: int = 20, max_output: int = 24, mapping: dict[str, str] | None = None, dropout: float = 0.1,
                  input_dropout: float = 0.0, input_noise: float = 0.0) -> None:
         # input_dropout / input_noise: training-time augmentation of the PHOC input — cells zeroed with that probability,
         # and Gaussian noise of that standard deviation added — so the decoder learns to read imperfect PHOCs.
@@ -35,7 +36,7 @@ class PHOCToString(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.output = nn.Linear(hidden, len(alphabet) + 2)
 
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         return dict(self.settings)
 
     def encode_targets(self, words: Sequence[str]) -> Tensor:
@@ -46,15 +47,19 @@ class PHOCToString(nn.Module):
             out[n, :len(c)] = torch.tensor(c)
         return out
 
-    def _start(self, words: Sequence[str]) -> Tuple:
-        with torch.no_grad():
-            phoc = self.phoc(list(words))
+    def _start(self, words: Sequence[str] | Tensor) -> tuple:
+        # words: strings, or their PHOCs (B, phoc.dim) already computed or predicted (gradients then flow through them)
+        if isinstance(words, Tensor):
+            phoc = words
+        else:
+            with torch.no_grad():
+                phoc = self.phoc(list(words))
         if self.training:
             phoc = nn.functional.dropout(phoc, p=self.settings["input_dropout"])
             phoc = phoc + self.settings["input_noise"] * torch.randn_like(phoc)
         return self.initial(phoc)[None], self.conditioning(phoc)  # (1, B, H), (B, C)
 
-    def forward(self, words: Sequence[str], targets: Tensor) -> Tensor:
+    def forward(self, words: Sequence[str] | Tensor, targets: Tensor) -> Tensor:
         # Teacher forcing: logits (B, L, symbols) for predicting targets[:, t] from targets[:, :t].
         hidden, condition = self._start(words)
         previous = torch.cat([torch.full((len(targets), 1), START, dtype=torch.long, device=targets.device), targets[:, :-1]], dim=1)
@@ -63,12 +68,12 @@ class PHOCToString(nn.Module):
         return self.output(self.dropout(states))
 
     @torch.no_grad()
-    def spell(self, words: Sequence[str]) -> List[str]:
+    def spell(self, words: Sequence[str] | Tensor) -> list[str]:
         # Greedy decoding of the spelling encoded in each input's PHOC.
         hidden, condition = self._start(words)
         symbol = torch.full((len(words),), START, dtype=torch.long, device=condition.device)
         finished = torch.zeros(len(words), dtype=torch.bool, device=condition.device)
-        spelled: List[List[str]] = [[] for _ in words]
+        spelled: list[list[str]] = [[] for _ in words]
         for _ in range(self.settings["max_output"]):
             states, hidden = self.gru(torch.cat([self.embed(symbol), condition], dim=1)[:, None], hidden)
             symbol = self.output(states[:, 0]).argmax(dim=1)

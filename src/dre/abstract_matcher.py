@@ -1,69 +1,69 @@
-# Matching: run an automaton over documents (sequences of token ids) given emissions (V, K), the probability that
-# vocabulary token v is symbol k; a document scores the probability of its best match. Only tensors: no strings.
+# Matching: run an automaton over ONE sequence of token ids given emissions (V, K), the probability that vocabulary
+# token v is symbol k; the result is, for every token, the probability that a match ends there. Only tensors: no
+# strings, no documents. Token id 0 is END_OF_DOCUMENT (every Vocabulary reserves it): reading it returns the automaton
+# to its initial state with probability 1, so matches never cross it, and its own end probability is 0.
 # Max-product (Viterbi) semantics: reading token x moves state i to state j with probability
 #     max_k transitions[k, i, j] * emissions[x, k],
 # and a path's probability is the product along it. In search mode a match may start at any token, so the start
-# states are re-activated before every token, and the score is the best probability with which an accept state is
-# reached; anchored, the match must span the whole document. With 0/1 emissions this is exactly classic regex matching.
-from typing import List, Optional, Tuple
+# states are re-activated before every token; anchored, a match must start right after an END_OF_DOCUMENT (or at the
+# first token), so the end probability at a document's last token is the probability that the whole document matches.
+# With 0/1 emissions this is exactly classic regex matching.
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
 from .fa_graph import DFA, Automaton
 
+RESET = 0  # the token id of END_OF_DOCUMENT
+
+
+@dataclass
+class Matches:
+    # For every token of the sequence: the probability that a match ends there (Viterbi: its best path; DFA: the total
+    # over all readings), and the token where that match starts, or -1 where starts were not asked for or the
+    # probability is below min_probability. Indexes are positions in the matched sequence.
+    end_probability: Tensor  # (T,)
+    start: Tensor            # (T,) long
+
 
 class AbstractMatcher(object):
-    """Scores documents against an automaton: one score per document.
+    """Runs an automaton over one token sequence.
 
-    The base implementation steps through each whole document on its own; subclasses compute the same scores faster
-    or implement other semantics.
+    The base implementation steps through the sequence token by token; subclasses compute the same values faster or
+    implement other semantics.
     """
-    def __init__(self, anchored: bool = False, device: Optional[torch.device] = None) -> None:
-        # anchored=False: a match may lie anywhere in the document (search). anchored=True: the match must span the
-        # whole document, from its first to its last token (as regex fullmatch); an empty document then scores 0.
+    def __init__(self, anchored: bool = False, device: torch.device | None = None) -> None:
         self.anchored = anchored
         self.device = device or torch.device("cpu")
 
-    def scores(self, automaton: Automaton, emissions: Tensor, documents: List[Tensor]) -> Tensor:
+    def run(self, automaton: Automaton, emissions: Tensor, token_ids: Tensor, min_probability: float | None = 0.01) -> Matches:
+        # min_probability None: only end probabilities (the fast path for ranking); otherwise also the start of every
+        # match ending with at least that probability.
         transitions = automaton.transitions.to(self.device)
         start, accept = automaton.start.to(self.device), automaton.accept.to(self.device)
         emissions = emissions.to(self.device)
-        scores = torch.zeros(len(documents))
-        for n, document in enumerate(documents):
-            state = (start if self.anchored else torch.zeros_like(start))[None]                 # (1, S)
-            best = torch.zeros((), device=self.device)
-            for token in document.tolist():
-                if not self.anchored:
-                    state = torch.maximum(state, start)
-                state, _ = self.step(state, emissions[token][None], transitions)
-                best = (state[0] * accept).amax() if self.anchored else torch.maximum(best, (state[0] * accept).amax())
-            scores[n] = best.cpu()
-        return scores
-
-    def matches(self, automaton: Automaton, emissions: Tensor, documents: List[Tensor], min_probability: float = 0.01) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        # Every match with probability >= min_probability, as (document, start token, end token (exclusive),
-        # probability) tensors: for every token a match can end at, the best match ending there. Anchored, a document
-        # has at most one match: the whole document.
-        transitions = automaton.transitions.to(self.device)
-        start, accept = automaton.start.to(self.device), automaton.accept.to(self.device)
-        emissions = emissions.to(self.device)
-        found = []
-        for n, document in enumerate(documents):
-            state = start[None].clone() if self.anchored else torch.zeros_like(start)[None]
-            origin = torch.zeros_like(state, dtype=torch.long)
-            for t, token in enumerate(document.tolist()):
-                if not self.anchored:  # a match may start here; an earlier start of the same probability is kept
-                    origin = torch.where(start > state, t, origin)
-                    state = torch.maximum(state, start)
-                state, origin = self.step(state, emissions[token][None], transitions, origin)
-                probability, best = (state[0] * accept).max(dim=0)
-                if (not self.anchored or t == document.numel() - 1) and probability >= min_probability:
-                    found.append((n, int(origin[0, best]), t + 1, float(probability)))
-        return _as_tensors(found)
+        end_probability = torch.zeros(token_ids.numel())
+        starts = torch.full((token_ids.numel(),), -1, dtype=torch.long)
+        state = (start if self.anchored else torch.zeros_like(start))[None]                     # (1, S)
+        origin = torch.zeros_like(state, dtype=torch.long)
+        for t, token in enumerate(token_ids.tolist()):
+            if token == RESET:
+                state = (start if self.anchored else torch.zeros_like(start))[None]
+                origin = torch.full_like(origin, t + 1)
+                continue
+            if not self.anchored:  # a match may start here; an earlier start of the same probability is kept
+                origin = torch.where(start > state, t, origin)
+                state = torch.maximum(state, start)
+            state, origin = self.step(state, emissions[token][None], transitions, origin)
+            probability, best = (state[0] * accept).max(dim=0)
+            end_probability[t] = probability.cpu()
+            if min_probability is not None and 0 < probability >= min_probability:
+                starts[t] = int(origin[0, best])
+        return Matches(end_probability, starts)
 
     @staticmethod
-    def step(state: Tensor, emission: Tensor, transitions: Tensor, origin: Optional[Tensor] = None) -> Tuple[Tensor, Optional[Tensor]]:
+    def step(state: Tensor, emission: Tensor, transitions: Tensor, origin: Tensor | None = None) -> tuple[Tensor, Tensor | None]:
         # state: (B, S), emission: (B, K) of the token read, transitions: (K, S, S) -> next state (B, S).
         # origin: (B, S), optional, the token where each state's best path started; it follows the best paths.
         if origin is None:
@@ -76,59 +76,49 @@ class AbstractMatcher(object):
 
 
 class ViterbiMatcher(AbstractMatcher):
-    """The base scores, computed in parallel over short windows of the documents.
+    """The base values, computed in parallel over short windows of the sequence.
 
-    Only parts of a document that can contain a match are processed: if no match is longer than L tokens and every
+    Only parts of the sequence that can contain a match are processed: if no match is longer than L tokens and every
     match reads at least one query word, a match lies within L-1 tokens of a token that resembles a query word. Those
-    windows ("segments") are short, so all of them run in parallel instead of stepping through whole documents.
-    A token resembles a query word if its emission is at least min_emission. Since a path through a token with a lower
-    emission scores below min_emission, every score >= min_emission is exact; lower scores may be reported as 0.
+    windows ("segments", never crossing an END_OF_DOCUMENT) are short, so all of them run in parallel. A token
+    resembles a query word if its emission is at least min_emission. Since a path through a token with a lower
+    emission scores below min_emission, every probability >= min_emission is exact; lower ones may be reported as 0.
     Segments are batched by length within max_segments segments and max_tokens padded tokens.
     """
-    def __init__(self, anchored: bool = False, device: Optional[torch.device] = None, min_emission: float = 0.01,
+    def __init__(self, anchored: bool = False, device: torch.device | None = None, min_emission: float = 0.01,
                  max_segments: int = 16384, max_tokens: int = 1 << 22) -> None:
         super().__init__(anchored, device)
         self.min_emission = min_emission
         self.max_segments = max_segments
         self.max_tokens = max_tokens
 
-    def scores(self, automaton: Automaton, emissions: Tensor, documents: List[Tensor]) -> Tensor:
-        scores = torch.zeros(len(documents))
-        segments, owners, _ = self._segments(automaton, emissions, documents)
-        for batch, accepted, _ in self._forward(automaton, emissions, segments, track_origin=False):
-            scores.scatter_reduce_(0, owners[batch], accepted.amax(dim=1).cpu(), reduce="amax")
-        return scores
+    def run(self, automaton: Automaton, emissions: Tensor, token_ids: Tensor, min_probability: float | None = 0.01) -> Matches:
+        end_probability = torch.zeros(token_ids.numel())
+        starts = torch.full((token_ids.numel(),), -1, dtype=torch.long)
+        segments, positions = self._segments(automaton, emissions, token_ids)
+        for batch, accepted, origins in self._forward(automaton, emissions, segments, track_origin=min_probability is not None):
+            index, row, t = _positions(batch, segments, positions)
+            probability = accepted.cpu()[row, t]
+            end_probability[index] = probability
+            if min_probability is not None:
+                kept = (probability >= min_probability) & (probability > 0)
+                starts[index[kept]] = positions[torch.tensor(batch)][row[kept]] + origins.cpu()[row[kept], t[kept]]
+        return Matches(end_probability, starts)
 
-    def matches(self, automaton: Automaton, emissions: Tensor, documents: List[Tensor], min_probability: float = 0.01) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        # As the base class; exact when min_probability >= min_emission.
-        segments, owners, positions = self._segments(automaton, emissions, documents)
-        lengths = torch.tensor([segment.numel() for segment in segments], dtype=torch.long)
-        found = [_as_tensors([])]
-        for batch, accepted, origins in self._forward(automaton, emissions, segments, track_origin=True):
-            batch = torch.tensor(batch, dtype=torch.long)
-            accepted, origins = accepted.cpu(), origins.cpu()
-            inside = torch.arange(accepted.size(1))[None, :] < lengths[batch][:, None]          # not padding
-            row, t = ((accepted >= min_probability) & inside).nonzero(as_tuple=True)
-            segment = batch[row]
-            found.append((owners[segment], positions[segment] + origins[row, t], positions[segment] + t + 1, accepted[row, t]))
-        return tuple(torch.cat(column) for column in zip(*found))
-
-    def _segments(self, automaton: Automaton, emissions: Tensor, documents: List[Tensor]) -> Tuple[List[Tensor], Tensor, Tensor]:
+    def _segments(self, automaton: Automaton, emissions: Tensor, token_ids: Tensor) -> tuple[list[Tensor], Tensor]:
         if self.anchored:  # whole documents
-            owners = torch.tensor([n for n, document in enumerate(documents) if document.numel() > 0], dtype=torch.long)
-            return [documents[n] for n in owners.tolist()], owners, torch.zeros_like(owners)
-        return candidate_segments(automaton, emissions, documents, self.min_emission)
+            return documents(token_ids)
+        return candidate_segments(automaton, emissions, token_ids, self.min_emission)
 
-    def _forward(self, automaton: Automaton, emissions: Tensor, segments: List[Tensor], track_origin: bool):
-        # Yields, batch by batch: the segments' indexes, the probability of the best match ending at each token (B, T)
-        # (anchored: only at each segment's last token, 0 elsewhere), and where those matches start (B, T) or None.
+    def _forward(self, automaton: Automaton, emissions: Tensor, segments: list[Tensor], track_origin: bool):
+        # Yields, batch by batch: the segments' indexes, the probability of the best match ending at each token (B, L),
+        # and where those matches start, relative to the segment (B, L), or None.
         transitions = automaton.transitions.to(self.device)                                    # (K, S, S)
         start, accept = automaton.start.to(self.device), automaton.accept.to(self.device)       # (S,)
         padded_emissions = torch.cat([emissions, torch.zeros(1, emissions.size(1))]).to(self.device)  # last row: padding
         padding = emissions.size(0)
         for batch in batches_by_size([segment.numel() for segment in segments], self.max_segments, self.max_tokens):
             tokens = torch.nn.utils.rnn.pad_sequence([segments[n] for n in batch], batch_first=True, padding_value=padding).to(self.device)
-            last = torch.tensor([segments[n].numel() - 1 for n in batch], device=self.device)  # (B,) position of each last token
             state = start.expand(len(batch), -1).clone() if self.anchored else torch.zeros(len(batch), automaton.n_states, device=self.device)  # (B, S)
             origin = torch.zeros_like(state, dtype=torch.long) if track_origin else None
             accepted = torch.zeros(len(batch), tokens.size(1), device=self.device)
@@ -140,11 +130,10 @@ class ViterbiMatcher(AbstractMatcher):
                     state = torch.maximum(state, start)
                 state, origin = self.step(state, padded_emissions[tokens[:, t]], transitions, origin)
                 probability, best = (state * accept).max(dim=1)
-                accepted[:, t] = torch.where(last == t, probability, 0.0) if self.anchored else probability
+                accepted[:, t] = probability
                 if track_origin:
                     origins[:, t] = origin.gather(1, best[:, None])[:, 0]
             yield batch, accepted, origins
-
 
 
 class DFAMatcher(ViterbiMatcher):
@@ -152,36 +141,37 @@ class DFAMatcher(ViterbiMatcher):
 
     A token's reading is categorical: it is exactly one of the query words, or none of them (the emission rows of
     ExactObserver and JointSoftmaxObserver; observers whose word probabilities sum above 1 are rejected), while ANY and
-    token classes are certain. The DFA's letters are these readings; its states, sets of automaton states. Since a DFA
-    is in exactly one state, the forward pass keeps a distribution over its states, and the mass on accepting states
-    after token t is the probability that a match ends at t (sum-product over all readings, where Viterbi keeps the
-    best path). A document scores its most probable end; a match starts where the reversed DFA, read backwards from
-    the end, finds the most probable span. With 0/1 emissions this is classic matching, as Viterbi.
-    Windows and batches as ViterbiMatcher; the DFA is built eagerly (up to max_states states) and minimized.
+    token classes are certain. The DFA's letters are these readings; its states, sets of automaton states (minimized).
+    Since a DFA is in exactly one state, the forward pass keeps a distribution over its states (an END_OF_DOCUMENT puts
+    all of it back on the initial state), and the mass on accepting states after token t is the probability that a
+    match ends at t (sum-product over all readings, where Viterbi keeps the best path). A match starts where the
+    reversed DFA, read backwards from its end, finds the most probable span. With 0/1 emissions this is classic
+    matching, as Viterbi. Windows and batches as ViterbiMatcher; the DFA is built eagerly, up to max_states states.
     """
-    def __init__(self, anchored: bool = False, device: Optional[torch.device] = None, min_emission: float = 0.01,
+    def __init__(self, anchored: bool = False, device: torch.device | None = None, min_emission: float = 0.01,
                  max_segments: int = 16384, max_tokens: int = 1 << 22, max_states: int = 1 << 16) -> None:
         super().__init__(anchored, device, min_emission, max_segments, max_tokens)
         self.max_states = max_states
 
-    def matches(self, automaton: Automaton, emissions: Tensor, documents: List[Tensor], min_probability: float = 0.01) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        segments, owners, positions = self._segments(automaton, emissions, documents)
-        lengths = torch.tensor([segment.numel() for segment in segments], dtype=torch.long)
-        found = [_as_tensors([])]
+    def run(self, automaton: Automaton, emissions: Tensor, token_ids: Tensor, min_probability: float | None = 0.01) -> Matches:
+        end_probability = torch.zeros(token_ids.numel())
+        starts = torch.full((token_ids.numel(),), -1, dtype=torch.long)
+        segments, positions = self._segments(automaton, emissions, token_ids)
         for batch, accepted, _ in self._forward(automaton, emissions, segments, track_origin=False):
-            batch = torch.tensor(batch, dtype=torch.long)
-            accepted = accepted.cpu()
-            inside = torch.arange(accepted.size(1))[None, :] < lengths[batch][:, None]
-            row, t = ((accepted >= min_probability) & inside).nonzero(as_tuple=True)
-            segment = batch[row]
-            if self.anchored:
-                starts = torch.zeros_like(t)
-            else:
-                starts = self._starts(automaton, emissions, [segments[s][:end + 1] for s, end in zip(segment.tolist(), t.tolist())])
-            found.append((owners[segment], positions[segment] + starts, positions[segment] + t + 1, accepted[row, t]))
-        return tuple(torch.cat(column) for column in zip(*found))
+            index, row, t = _positions(batch, segments, positions)
+            probability = accepted.cpu()[row, t]
+            end_probability[index] = probability
+            if min_probability is not None:
+                kept = (probability >= min_probability) & (probability > 0)
+                segment = torch.tensor(batch)[row[kept]]
+                if self.anchored:
+                    starts[index[kept]] = positions[segment]
+                else:
+                    prefixes = [segments[s][:end + 1] for s, end in zip(segment.tolist(), t[kept].tolist())]
+                    starts[index[kept]] = positions[segment] + self._starts(automaton, emissions, prefixes)
+        return Matches(end_probability, starts)
 
-    def _starts(self, automaton: Automaton, emissions: Tensor, prefixes: List[Tensor]) -> Tensor:
+    def _starts(self, automaton: Automaton, emissions: Tensor, prefixes: list[Tensor]) -> Tensor:
         # For each token sequence ending at a match end: where the most probable match ending there starts (the
         # longest one on ties), read backwards on the reversed DFA.
         longest = longest_match(automaton)
@@ -196,17 +186,13 @@ class DFAMatcher(ViterbiMatcher):
             starts[torch.tensor(batch)] = torch.tensor([prefixes[n].numel() - 1 for n in batch]) - length
         return starts
 
-    def _forward(self, automaton: Automaton, emissions: Tensor, segments: List[Tensor], track_origin: bool):
+    def _forward(self, automaton: Automaton, emissions: Tensor, segments: list[Tensor], track_origin: bool):
         dfa = self._determinize(automaton, emissions, search=not self.anchored)
         for batch in batches_by_size([segment.numel() for segment in segments], self.max_segments, self.max_tokens):
             tokens = torch.nn.utils.rnn.pad_sequence([segments[n] for n in batch], batch_first=True, padding_value=emissions.size(0)).to(self.device)
-            accepted = self._dfa_forward(dfa, tokens)
-            if self.anchored:  # only complete documents count
-                last = torch.tensor([segments[n].numel() - 1 for n in batch], device=self.device)
-                accepted = torch.where(torch.arange(tokens.size(1), device=self.device)[None, :] == last[:, None], accepted, 0.0)
-            yield batch, accepted, None
+            yield batch, self._dfa_forward(dfa, tokens), None
 
-    def _dfa_forward(self, determinized: Tuple[DFA, Tensor, Tensor], tokens: Tensor) -> Tensor:
+    def _dfa_forward(self, determinized: tuple[DFA, Tensor, Tensor], tokens: Tensor) -> Tensor:
         # tokens: (B, T) vocabulary ids, padding = V. Returns the probability mass on accepting states after each token.
         dfa, readings, pattern = determinized
         delta, accepting = dfa.transitions.to(self.device), dfa.accept.to(self.device)
@@ -225,7 +211,7 @@ class DFAMatcher(ViterbiMatcher):
             accepted[:, t] = probability[:, accepting].sum(dim=1)
         return accepted
 
-    def _determinize(self, automaton: Automaton, emissions: Tensor, search: bool) -> Tuple[DFA, Tensor, Tensor]:
+    def _determinize(self, automaton: Automaton, emissions: Tensor, search: bool) -> tuple[DFA, Tensor, Tensor]:
         # The letters are (class pattern, reading): the 0/1 values of the token-class columns that occur in the
         # vocabulary, times "none" or one of the W query words. Returns the minimized DFA over them and, per vocabulary
         # token (+ a padding row), the probabilities of its readings (V + 1, W + 1) and its class pattern (V + 1,): the
@@ -254,7 +240,8 @@ class DFAMatcher(ViterbiMatcher):
         return dfa, readings.to(self.device), pattern.to(self.device)
 
 
-def longest_match(automaton: Automaton) -> Optional[int]:
+
+def longest_match(automaton: Automaton) -> int | None:
     # The most tokens any match can read, or None if unbounded (a cycle) or if a match can read only ANY tokens.
     any_mask = automaton.any_mask
     step = automaton.transitions.amax(dim=0)  # (S, S): reading some token can lead from i to j
@@ -280,49 +267,59 @@ def _reaches(start: Tensor, step: Tensor, accept: Tensor, n_states: int) -> bool
     return False
 
 
-def _as_tensors(found: List[Tuple[int, int, int, float]]) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-    columns = list(zip(*found)) if found else [(), (), (), ()]
-    return (torch.tensor(columns[0], dtype=torch.long), torch.tensor(columns[1], dtype=torch.long),
-            torch.tensor(columns[2], dtype=torch.long), torch.tensor(columns[3], dtype=torch.float))
+def _positions(batch: list[int], segments: list[Tensor], positions: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+    # For a batch of padded segments: the sequence position of every real (non-padding) token, and its (row, column).
+    lengths = torch.tensor([segments[n].numel() for n in batch], dtype=torch.long)
+    row, t = (torch.arange(int(lengths.max()) if len(batch) else 0)[None, :] < lengths[:, None]).nonzero(as_tuple=True)
+    return positions[torch.tensor(batch, dtype=torch.long)][row] + t, row, t
 
 
-def candidate_segments(automaton: Automaton, emissions: Tensor, documents: List[Tensor], min_emission: float) -> Tuple[List[Tensor], Tensor, Tensor]:
-    # Returns the token segments worth processing and, for each, the index of the document it comes from and the
-    # position of its first token in that document.
-    # Tokens whose emissions are all below min_emission are treated as unable to be a query word.
+def documents(token_ids: Tensor) -> tuple[list[Tensor], Tensor]:
+    # The non-empty runs of tokens between END_OF_DOCUMENT tokens, and the position of each run's first token.
+    return _runs(token_ids, token_ids != RESET)
+
+
+def _runs(token_ids: Tensor, keep: Tensor) -> tuple[list[Tensor], Tensor]:
+    # The maximal runs of kept tokens and their first positions.
+    starts = keep.clone()
+    starts[1:] &= ~keep[:-1]
+    lengths = torch.bincount(torch.cumsum(starts.long(), 0)[keep] - 1, minlength=int(starts.sum()))
+    return list(torch.split(token_ids[keep], lengths.tolist())), starts.nonzero().reshape(-1)
+
+
+def candidate_segments(automaton: Automaton, emissions: Tensor, token_ids: Tensor, min_emission: float) -> tuple[list[Tensor], Tensor]:
+    # The windows of the sequence worth processing, and the position of each window's first token. Tokens whose
+    # emissions are all below min_emission are treated as unable to be a query word; windows never contain an
+    # END_OF_DOCUMENT.
+    if token_ids.numel() == 0:
+        return [], torch.zeros(0, dtype=torch.long)
+    reset = token_ids == RESET
     words = ~automaton.any_mask
     resembles = emissions[:, words].amax(dim=1) >= min_emission if words.any() else torch.ones(emissions.size(0), dtype=torch.bool)
-    lengths = torch.tensor([document.numel() for document in documents], dtype=torch.long)
-    if lengths.sum() == 0:
-        return [], torch.zeros(0, dtype=torch.long), torch.zeros(0, dtype=torch.long)
-    tokens = torch.cat(documents)
-    owner = torch.repeat_interleave(torch.arange(len(documents)), lengths)
+    resembling = resembles[token_ids] & ~reset
     longest = longest_match(automaton)
     if longest is None:  # whole documents that contain at least one resembling token
-        keep = torch.zeros(len(documents), dtype=torch.bool).index_fill_(0, owner[resembles[tokens]], True)[owner]
+        document = torch.cumsum(reset.long(), 0)
+        keep = torch.zeros(int(document[-1]) + 1, dtype=torch.bool).index_fill_(0, document[resembling], True)[document]
     else:  # every token within longest-1 positions of a resembling token
         radius = longest - 1
-        keep = torch.nn.functional.max_pool1d(resembles[tokens].float()[None, None], 2 * radius + 1, stride=1, padding=radius)[0, 0] > 0
-    # A segment is a run of kept tokens within one document.
+        keep = torch.nn.functional.max_pool1d(resembling.float()[None, None], 2 * radius + 1, stride=1, padding=radius)[0, 0] > 0
+    keep &= ~reset
     starts = keep.clone()
-    starts[1:] &= ~keep[:-1] | (owner[1:] != owner[:-1])
-    kept_positions = keep.nonzero().reshape(-1)
-    run = torch.cumsum(starts.long(), 0)[kept_positions] - 1
+    starts[1:] &= ~keep[:-1]
+    run = torch.cumsum(starts.long(), 0)[keep] - 1
     n_runs = int(starts.sum())
-    segment_lengths = torch.bincount(run, minlength=n_runs)
-    segments = list(torch.split(tokens[kept_positions], segment_lengths.tolist()))
-    # Windows spill across document boundaries; a spilled run without any resembling token cannot match.
-    useful = torch.bincount(run, weights=resembles[tokens[kept_positions]].float(), minlength=n_runs) > 0
-    owners = owner[starts]
-    positions = (torch.arange(tokens.numel()) - torch.cumsum(lengths, 0)[owner] + lengths[owner])[starts]
-    return [segment for segment, keep_it in zip(segments, useful.tolist()) if keep_it], owners[useful], positions[useful]
+    segments = list(torch.split(token_ids[keep], torch.bincount(run, minlength=n_runs).tolist()))
+    # A window spilled over an END_OF_DOCUMENT into a run without any resembling token cannot match.
+    useful = torch.bincount(run, weights=resembling[keep].float(), minlength=n_runs) > 0
+    return [segment for segment, keep_it in zip(segments, useful.tolist()) if keep_it], starts.nonzero().reshape(-1)[useful]
 
 
-def batches_by_size(lengths: List[int], max_segments: int, max_tokens: int) -> List[List[int]]:
+def batches_by_size(lengths: list[int], max_segments: int, max_tokens: int) -> list[list[int]]:
     # Segments sorted by length, grouped so that a batch never exceeds max_segments, nor max_tokens once padded to its
     # longest segment (a single longer segment gets a batch of its own).
     order = sorted(range(len(lengths)), key=lambda n: lengths[n])
-    batches: List[List[int]] = []
+    batches: list[list[int]] = []
     for n in order:
         if batches and len(batches[-1]) < max_segments and (len(batches[-1]) + 1) * lengths[n] <= max_tokens:
             batches[-1].append(n)

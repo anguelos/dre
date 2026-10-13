@@ -33,19 +33,19 @@ def main():
     if args.verbosity>1:
         print(f"done.")
     sentences = list(tqdm.tqdm(dre.words_of_sentences(text)))
-    observer = dre.SigmoidObserver(dre.Vocabulary.from_documents(sentences), embedder, dre.CosineDistance(),
-        b=args.observer_b, device=args.device)
-    matcher = dre.ViterbiMatcher(device=torch.device(args.device))
+    corpus = dre.Corpus([" ".join(sentence) for sentence in sentences],
+        lambda vocabulary: dre.SigmoidObserver(vocabulary, embedder, dre.CosineDistance(), b=args.observer_b, device=args.device),
+        dre.ViterbiMatcher(device=torch.device(args.device)), dre.Tokenizer.pretokenized())
     with torch.no_grad():
-        emissions = observer.observe(automaton)
-        probs = matcher.scores(automaton, emissions, [observer.vocabulary.encode(sentence) for sentence in sentences])
+        emissions = corpus.observer.observe(automaton)
+        probs = corpus.scores(automaton)
         results = []
         for n, sentence in enumerate(sentences):
             results.append([probs[n].item(), n, " ".join(sentence)])
             if args.verbosity > 3:
                 print(f"{n}: {probs[n].item()} #  {' '.join(sentence)}")
             if args.verbosity >4:
-                print(emissions[observer.vocabulary.encode(sentence)])
+                print(emissions[corpus.vocabulary.encode(sentence)])
                 print(sentence)
                 print(automaton.symbols)
         

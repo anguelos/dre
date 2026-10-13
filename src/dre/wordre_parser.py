@@ -1,11 +1,10 @@
 from .fa_segment import NFASegment
 from .fa_graph import ANY as ANY_SYMBOL, Automaton, FAGraph
+from collections.abc import Callable
 
 from sly import Lexer,  Parser
 
-from matplotlib import pyplot as plt
 from collections import defaultdict
-from typing import Union
 
 
 
@@ -141,7 +140,7 @@ class WordParser(Parser):
 
     @_('WORD')
     def literal(self,p):
-        return(p[0].lower())
+        return(p[0])  # as written: the embedder's mapper normalizes query words and tokens alike
 
     @_('CLASS')
     def literal(self,p):
@@ -149,11 +148,13 @@ class WordParser(Parser):
         #self.stack.append(p[0])
 
 
-def compile_regex(regex: str) -> Automaton:
+def compile_regex(regex: str, normalize: Callable[[str], str] | None = None) -> Automaton:
+    # normalize (e.g. an embedder's or observer's normalize): query words with the same normalized form become one
+    # symbol ("Federal | federal" reads one word); without it, words are kept as written.
     graph = WordParser().parse_str(regex)
     if graph.start or graph.end:
         raise ValueError(f"Anchors ^ $ are not supported, use a matcher with anchored=True: {regex!r}")
-    return graph.to_automaton()
+    return graph.to_automaton(normalize)
 
 
 def main():

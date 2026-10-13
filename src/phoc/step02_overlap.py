@@ -4,7 +4,6 @@
 #   "count"    sums the shares, so a character straddling two regions counts half (or a third…) in each;
 #   "presence" marks a symbol present if at least half of one of its characters lies in the region (Almazán et al.).
 # Shares are computed in integer units of 1/(n·L), so they are exact and the 1/2 threshold has no rounding issues.
-from typing import Tuple
 
 import torch
 from torch import Tensor
@@ -13,7 +12,7 @@ from .step01_interface import PHOC as PHOCInterface
 
 
 class PHOC(PHOCInterface):
-    def _regions(self, device: torch.device) -> Tuple[Tensor, Tensor]:
+    def _regions(self, device: torch.device) -> tuple[Tensor, Tensor]:
         levels = torch.tensor([level for level in self.levels for _ in range(level)], device=device)
         indexes = torch.tensor([r for level in self.levels for r in range(level)], device=device)
         return levels, indexes

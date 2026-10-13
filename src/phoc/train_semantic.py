@@ -14,7 +14,6 @@ import string
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import fargv
 import numpy as np
@@ -63,7 +62,7 @@ class Config:
     "-v: per-epoch summary  -vv: progress bars."
 
 
-def load_vectors(cfg: Config) -> Tuple[List[str], np.ndarray]:
+def load_vectors(cfg: Config) -> tuple[list[str], np.ndarray]:
     if cfg.vectors.endswith(".npy"):
         matrix = np.load(cfg.vectors).astype(np.float32)
         words = Path(cfg.vocabulary).read_text(encoding="utf-8").split("\n")[:len(matrix)]
@@ -106,7 +105,7 @@ def corrupt(word: str, probability: float, rng: random.Random) -> str:
     return "".join(out) or word
 
 
-def make_split(words: List[str], val_fraction: float, seed: int) -> Dict[str, List[str]]:
+def make_split(words: list[str], val_fraction: float, seed: int) -> dict[str, list[str]]:
     # Training and held-out words; deterministic, so every model trained with the same settings shares the split.
     order = list(range(len(words)))
     random.Random(seed).shuffle(order)
@@ -114,7 +113,7 @@ def make_split(words: List[str], val_fraction: float, seed: int) -> Dict[str, Li
     return {"train": sorted(words[n] for n in order[n_val:]), "val": sorted(words[n] for n in order[:n_val])}
 
 
-def evaluation_sets(split: Dict[str, List[str]], noise: float, seed: int) -> Dict[str, Tuple[List[str], List[str]]]:
+def evaluation_sets(split: dict[str, list[str]], noise: float, seed: int) -> dict[str, tuple[list[str], list[str]]]:
     # name → (input spellings, true words); deterministic, so the trained model and any baseline see the same inputs.
     #   unseen_clean: held-out words as spelled   unseen_noisy: held-out words, corrupted   (generalisation)
     #   known_noisy: training words in fresh corruptions                                    (the OCR case)
@@ -126,7 +125,7 @@ def evaluation_sets(split: Dict[str, List[str]], noise: float, seed: int) -> Dic
 
 
 @torch.no_grad()
-def rank_metrics(predicted: torch.Tensor, true_rows: torch.Tensor, all_targets: torch.Tensor) -> Dict[str, float]:
+def rank_metrics(predicted: torch.Tensor, true_rows: torch.Tensor, all_targets: torch.Tensor) -> dict[str, float]:
     # predicted: (N, D) unit vectors. Sums of: cosine loss to the true word's vector, and whether the true word is the
     # top-1 / top-5 neighbour of the prediction among all words.
     ranked = (predicted @ all_targets.T).topk(5, dim=1).indices
@@ -135,12 +134,12 @@ def rank_metrics(predicted: torch.Tensor, true_rows: torch.Tensor, all_targets: 
             "top1": float((ranked[:, :1] == truth).sum()), "top5": float((ranked == truth).any(dim=1).sum())}
 
 
-def mean_metrics(parts: List[Dict[str, float]], n: int) -> Dict[str, float]:
+def mean_metrics(parts: list[dict[str, float]], n: int) -> dict[str, float]:
     return {key: sum(part[key] for part in parts) / n for key in ("loss", "top1", "top5")}
 
 
 @torch.no_grad()
-def evaluate(model: PHOCToSemantic, inputs: List[str], true_rows: torch.Tensor, all_targets: torch.Tensor, batch_size: int) -> Dict[str, float]:
+def evaluate(model: PHOCToSemantic, inputs: list[str], true_rows: torch.Tensor, all_targets: torch.Tensor, batch_size: int) -> dict[str, float]:
     model.eval()
     parts = [rank_metrics(model(inputs[b:b + batch_size]), true_rows[b:b + batch_size], all_targets) for b in range(0, len(inputs), batch_size)]
     return mean_metrics(parts, len(inputs))

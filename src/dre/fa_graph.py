@@ -1,12 +1,13 @@
-from matplotlib import pyplot as plt
-import matplotlib
 import numpy as np
 import torch
 from torch import Tensor
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import List
 from .fa_segment import NFASegment
+from .optional import optional_import
+
+graphviz = optional_import("graphviz")
 
 
 ANY = "."  # the symbol of transitions reading any token
@@ -21,7 +22,7 @@ def is_class(symbol: str) -> bool:
 class Automaton:
     # What the engine (emissions.py, forward.py) consumes: one transition matrix per query symbol, ε-transitions folded in.
     regex: str
-    symbols: List[str]  # query symbols, ANY included if used
+    symbols: list[str]  # query symbols, ANY included if used
     transitions: Tensor  # (K, S, S): transitions[k, i, j] = 1 iff reading symbols[k] in state i can lead to state j
     start: Tensor  # (S,) states active before reading anything
     accept: Tensor  # (S,)
@@ -181,7 +182,6 @@ class FAGraph(object):
     #     plt.title(re_str)
     
     def plot(self, filename="/tmp/nfa.gv", view=False):
-        import graphviz
         transitions, states = self.nfa_segment.get_all_states_and_transitions()
 
         f = graphviz.Digraph('finite_state_machine', filename=filename)
@@ -221,9 +221,17 @@ class FAGraph(object):
         res= "NFA Graph:\n"+str(self.nfa_segment)
         return res
 
-    def to_automaton(self) -> Automaton:
+    def to_automaton(self, normalize: Callable[[str], str] | None = None) -> Automaton:
         # No search self-loops (start_regex=end_regex=True): the engine implements search and anchored matching itself.
+        # normalize: applied to query words (not to ANY or token classes); words with the same normalized form become one
+        # symbol, its transitions the union of theirs.
         transitions, starting_states, accepting_states = self.nfa_segment.create_transition_matrices(start_regex=True, end_regex=True)
+        if normalize is not None:
+            merged: dict[str, np.ndarray] = {}
+            for symbol, matrix in transitions.items():
+                key = symbol if symbol == ANY or is_class(symbol) else normalize(symbol)
+                merged[key] = np.maximum(merged[key], matrix) if key in merged else matrix
+            transitions = merged
         symbols = sorted(transitions.keys())
         matrices = torch.tensor(np.stack([transitions[symbol] for symbol in symbols]), dtype=torch.float32)
         start = torch.tensor(starting_states, dtype=torch.float32)

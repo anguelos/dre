@@ -130,3 +130,13 @@ src/dre/parsetab.py
 
 # Word vector cache
 .word_vectors_cache/
+examples/phoc/data/
+
+# Exploratory examples kept out of the paper's repository (ECIR 2027 short paper)
+examples/glove/
+examples/phoc/
+examples/charters/
+examples/phoc_semantic/
+
+# query_augmentation outputs (REPORT.md is kept)
+examples/query_augmentation/data/

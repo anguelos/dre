@@ -26,21 +26,29 @@ python -c 'import nltk; nltk.download("punkt")'
 
 ## Usage
 
-The examples share one helper that turns texts into a vocabulary and token-index tensors:
+A `Corpus` holds a collection of texts and answers word regexes over it:
 
 ```python
 import dre
 
-def encode(documents):
-    tokens = [d.lower().split() for d in documents]
-    vocabulary = dre.Vocabulary.from_documents(tokens)
-    return vocabulary, [vocabulary.encode(d) for d in tokens]
+texts = ["the federal register of rules", "a register of federal rules", "the Federal tax register"]
+corpus = dre.Corpus(texts)                      # exact word matching
+
+corpus.scores("federal ( tax | . ) ? register")
+# tensor([1., 0., 1.])                         one score per document, for ranking
+corpus.search("federal ( tax | . ) ? register")
+# [Hit(document=0, start=4, end=20, probability=1.0, text='federal register'),
+#  Hit(document=2, start=4, end=24, probability=1.0, text='Federal tax register')]
 ```
 
-The engine has three interchangeable stages:
-- an **observer** gives, for every vocabulary token, the probability that it is each symbol of a regex; soft
-  observers derive it from an **embedder** (token → vector) and a **distance** between vectors;
-- a **matcher** runs the regex's automaton over documents of token ids and scores each document by its best match.
+It works in three layers, each with one job:
+- **Corpus** (`search.py`): keeps the texts as one string, joined by an `END_OF_DOCUMENT` character; it maps what the
+  engine answers back to documents and character spans, filters and ranks matches.
+- **Tokenizer, observer** (`tokenizing.py`, `abstract_observer.py`): the tokenizer only splits text into word-like
+  tokens (character spans, no normalization); an **observer** gives every distinct token the probability that it is
+  each symbol of a regex, from an **embedder** (token → vector) and a **distance** between vectors.
+- **Matcher** (`abstract_matcher.py`): runs the regex's automaton over the one token sequence and returns, for every
+  token, the probability that a match ends there. `END_OF_DOCUMENT` returns the automaton to its initial state.
 
 | stage | base class | implementations |
 |---|---|---|
@@ -49,55 +57,39 @@ The engine has three interchangeable stages:
 | observer | `AbstractObserver`, `SequenceObserver` (cached, exact) | `ExactObserver`, `JointSoftmaxObserver`, `SigmoidObserver` |
 | matcher | `AbstractMatcher` (max-product) | `ViterbiMatcher` (windowed, batched), `DFAMatcher` (total probability) |
 
-### Classic regex search
-
-With exact emissions a token either is a query word or is not, and dre behaves like a regex engine over words:
-
-```python
-vocabulary, documents = encode(["the federal register of rules",
-                                "a register of federal rules",
-                                "the federal tax register"])
-
-automaton = dre.compile_regex("federal ( tax | . ) ? register")
-observer = dre.ExactObserver(vocabulary)
-matcher = dre.ViterbiMatcher()
-matcher.scores(automaton, observer.observe(automaton), documents)
-# tensor([1., 0., 1.])
-```
-
 ### Searching noisy text with PHOC
 
 OCR breaks exact matching. With PHOC emissions a token resembling a query word is probably that word, and documents
-are ranked by how well they match:
+are ranked by how well they match. A corpus takes the observer as a function of its vocabulary:
 
 ```python
-from phoc import PHOC
+noisy = ["the federa1 regisrer of rules",   # OCR errors
+         "Federal Regster notices",         # a typo
+         "a register of federal rules"]     # the words, but not the pattern
 
-vocabulary, documents = encode(["the federa1 regisrer of rules",   # OCR errors
-                                "Federal Regster notices",         # a typo
-                                "a register of federal rules"])    # the words, but not the pattern
-
-automaton = dre.compile_regex("federal register")
-exact = dre.ExactObserver(vocabulary)
-soft = dre.JointSoftmaxObserver(vocabulary, dre.PHOCEmbedder(PHOC()), dre.L1Distance())
-matcher.scores(automaton, exact.observe(automaton), documents)
+dre.Corpus(noisy).scores("federal register")
 # tensor([0., 0., 0.])
-matcher.scores(automaton, soft.observe(automaton), documents)
+soft = dre.Corpus(noisy, lambda vocabulary: dre.JointSoftmaxObserver(vocabulary, dre.PHOCEmbedder(), dre.L1Distance()))
+soft.scores("federal register")
 # tensor([0.989, 0.983, 0.000])
+for hit in soft.search("federal register"):
+    print(hit.document, hit.text, round(hit.probability, 3))
+# 0 federa1 regisrer 0.989
+# 1 Federal Regster 0.983
 ```
 
 ### Many queries over one collection
 
-An observer serves any number of regexes. It embeds the vocabulary per distinct token, not per running token, and
-caches the distances to every query word it has seen; `prepare` computes the words of many queries in one pass:
+The observer embeds each distinct token once and caches its distance to every query word it has seen; `prepare`
+computes the words of many queries in one pass:
 
 ```python
 queries = ["federal register", "register of . rules", "notices"]
 automata = [dre.compile_regex(q) for q in queries]
-soft.prepare(w for a in automata for w in dre.query_words(a))
+soft.observer.prepare(w for a in automata for w in dre.query_words(a))
 
 for query, automaton in zip(queries, automata):
-    print(query, matcher.scores(automaton, soft.observe(automaton), documents))
+    print(query, soft.scores(automaton))
 # federal register     tensor([0.989, 0.983, 0.000])
 # register of . rules  tensor([0.000, 0.000, 0.922])
 # notices              tensor([0.000, 1.000, 0.000])
@@ -109,56 +101,45 @@ The joint softmax takes any distance and each token's scale ("mass") in the same
 embedded as their character codes and the mass is the token's length:
 
 ```python
-edits = dre.JointSoftmaxObserver(vocabulary, dre.CharCodeEmbedder(), dre.LevenshteinDistance(),
-                                 temperature=0.22, background=0.27)
-matcher.scores(automaton, edits.observe(automaton), documents)
+edits = dre.Corpus(noisy, lambda vocabulary: dre.JointSoftmaxObserver(vocabulary, dre.CharCodeEmbedder(), dre.LevenshteinDistance(),
+                                                                      temperature=0.22, background=0.27))
+edits.scores("federal register")
 # tensor([0.978, 0.983, 0.000])
 ```
 
 ### Classifying sentences with rules
 
-`anchored=True` requires a rule to cover the whole sentence, as rule-based classifiers do; token classes written
+An anchored matcher requires a rule to cover the whole sentence, as rule-based classifiers do; token classes written
 `<name>` match whatever tokens the given test accepts:
 
 ```python
 classes = {"<number>": str.isdigit, "<punct>": lambda t: t in {".", ",", "!", "?"}}
-rules = {"spam": dre.compile_regex(". * call <number> . *"),
-         "question": dre.compile_regex("( what | who | when ) . * <punct>")}
-vocabulary, sentences = encode(["please call 0800 now !",
-                                "what time is it ?",
-                                "tell me what time it is ?"])
-observer = dre.ExactObserver(vocabulary, classes=classes)
-anchored = dre.ViterbiMatcher(anchored=True)
+sentences = dre.Corpus(["please call 0800 now !", "what time is it ?", "tell me what time it is ?"],
+                       lambda vocabulary: dre.ExactObserver(vocabulary, classes=classes), dre.ViterbiMatcher(anchored=True))
 
-for label, automaton in rules.items():
-    print(label, anchored.scores(automaton, observer.observe(automaton), sentences))
-# spam      tensor([1., 0., 0.])
-# question  tensor([0., 1., 0.])    — searching anywhere (anchored=False) would also flag the third sentence
+sentences.scores(". * call <number> . *")
+# tensor([1., 0., 0.])
+sentences.scores("( what | who | when ) . * <punct>")
+# tensor([0., 1., 0.])    — searching anywhere (not anchored) would also flag the third sentence
 ```
 
-### Searching texts
+### The engine's answer, token by token
 
-A `Corpus` tokenizes raw texts once (tensor operations over pylelemmatize character codes; tokens keep their
-character spans) and a `Searcher` returns the matches over the whole collection, most probable first, as character
-spans. `DFAMatcher` runs the determinized automaton: each token is read as exactly one query word or none, the forward
-pass keeps a distribution over DFA states, and a match's probability is the total over all readings rather than the
-best path's.
+`Corpus.matches` returns what the matcher computes: for every token of the collection, the probability that a match
+ends there, and where that match starts. `DFAMatcher` runs the determinized automaton: each token is read as exactly
+one query word or none, so its probabilities are totals over all readings rather than the best path's:
 
 ```python
-texts = ["The Federa1 Regisrer, vol. 3: federal rules.",
-         "Notices of the Federal Register.",
-         "A register of federal rules."]
-corpus = dre.Corpus(texts)
-observer = dre.JointSoftmaxObserver(corpus.vocabulary, dre.PHOCEmbedder(PHOC()), dre.L1Distance())
-searcher = dre.Searcher(corpus, observer, dre.DFAMatcher())
-
-for hit in searcher.search("federal ( register | rules )"):
-    print(hit.document, texts[hit.document][hit.start:hit.end], round(hit.probability, 3))
-# 1 Federal Register 1.0
-# 0 federal rules 0.998
-# 2 federal rules 0.998
-# 0 Federa1 Regisrer 0.989
+dfa = dre.Corpus(noisy, lambda vocabulary: dre.JointSoftmaxObserver(vocabulary, dre.PHOCEmbedder(), dre.L1Distance()),
+                 dre.DFAMatcher())
+matches = dfa.matches("federal register")
+matches.end_probability   # one per token (rounded here); END_OF_DOCUMENT tokens close each document
+# tensor([0.000, 0.000, 0.989, 0.000, 0.000, 0.000, 0.000, 0.983, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000])
+matches.start             # where the match ending at each token starts (-1: below min_probability)
+# tensor([-1, -1,  1, -1, -1, -1, -1,  6, -1, -1, -1, -1, -1, -1, -1, -1])
 ```
+
+`bin/drep` is a small grep built on this: `drep -v --regex="federal ( tax ) ? register" notes.txt`.
 
 ### PHOC embeddings
 
@@ -208,7 +189,8 @@ make build      # sdist + wheel
 
 - `src/dre/` — the engine: `wordre_parser.py` with `fa_segment.py` / `fa_graph.py` (regex → automaton),
   `abstract_embedder.py`, `abstract_distance.py`, `abstract_observer.py` (token → symbol probabilities),
-  `abstract_matcher.py` (scoring documents, finding matches), `search.py` (texts in, ranked character spans out)
+  `abstract_matcher.py` (one token sequence in, a probability per token out), `search.py` (Corpus: texts in, ranked
+  documents and character spans out)
 - `src/phoc/` — PHOC embeddings, built step by step (`step01_interface.py`, `step02_overlap.py`)
 - `examples/` — experiments (`ir/`, `semantics/`)
 - `bin/` — standalone scripts

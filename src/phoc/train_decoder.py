@@ -10,7 +10,6 @@ import random
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List
 
 import fargv
 import torch
@@ -70,7 +69,7 @@ def edit_distance(a: str, b: str) -> int:
     return previous[-1]
 
 
-def spelling_metrics(predicted: List[str], truth: List[str]) -> Dict[str, float]:
+def spelling_metrics(predicted: list[str], truth: list[str]) -> dict[str, float]:
     return {"accuracy": sum(p == t for p, t in zip(predicted, truth)) / len(truth),
             "cer": sum(edit_distance(p, t) for p, t in zip(predicted, truth)) / sum(len(t) for t in truth)}
 

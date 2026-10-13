@@ -1,15 +1,15 @@
 import torch
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+from collections.abc import Callable, Iterable
 
 from .abstract_embedder import AbstractEmbedder
 from .abstract_distance import AbstractDistance
 from .fa_graph import ANY, Automaton, is_class
 from .tokenizing import Vocabulary
 
-Classes = Dict[str, Callable[[str], bool]]  # token class symbol, e.g. "<number>", -> membership test for a token
+Classes = dict[str, Callable[[str], bool]]  # token class symbol, e.g. "<number>", -> membership test for a token
 
 
-def query_words(automaton: Automaton) -> List[str]:
+def query_words(automaton: Automaton) -> list[str]:
     return [symbol for symbol in automaton.symbols if symbol != ANY and not is_class(symbol)]
 
 
@@ -20,17 +20,23 @@ class AbstractObserver(object):
     each token is each symbol. ANY (".") is every token with probability 1 and a token class "<name>" is exactly the
     tokens for which classes["<name>"] holds; the probability of being a query word comes from the token-to-word
     distances (embedder + distance) through _word_probabilities, which each technique implements.
-    Without an embedder, a token is at distance 0 from the words it equals (case-insensitively) and 1 from the others.
+    Tokens and query words are compared after the embedder's normalization (its pylelemmatize mapper). Without an
+    embedder (or with the base AbstractEmbedder, which only normalizes), a token is at distance 0 from the words with
+    the same normalized form and 1 from the others.
     """
-    def __init__(self, embedder: Optional[AbstractEmbedder] = None, distance: Optional[AbstractDistance] = None,
-                 classes: Optional[Classes] = None, batch_size: int = 65536, device="cpu") -> None:
-        self._embedder = embedder
+    def __init__(self, embedder: AbstractEmbedder | None = None, distance: AbstractDistance | None = None,
+                 classes: Classes | None = None, batch_size: int = 65536, device="cpu") -> None:
+        self._embedder = AbstractEmbedder() if embedder is None else embedder
         self._distance = AbstractDistance() if distance is None else distance
         self.classes = {} if classes is None else classes
         self.batch_size = batch_size
         self.device = device
 
-    def observe_sequence(self, automaton: Automaton, tokens: List[str]) -> torch.Tensor:
+    def normalize(self, token: str) -> str:
+        # the character normalization tokens and query words are compared under (the embedder's mapper)
+        return self._embedder.normalize(token)
+
+    def observe_sequence(self, automaton: Automaton, tokens: list[str]) -> torch.Tensor:
         # (T, K): the tokens of one sequence, nothing cached
         distances, masses = self._distances(tokens, query_words(automaton))
         return self._symbol_table(automaton, tokens, distances, masses)
@@ -39,30 +45,30 @@ class AbstractObserver(object):
         # distances: (N, W) between N tokens and an automaton's W query words, masses: (N,) -> probabilities (N, W)
         raise NotImplementedError
 
-    def _distances(self, tokens: List[str], words: List[str]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _distances(self, tokens: list[str], words: list[str]) -> tuple[torch.Tensor, torch.Tensor]:
         # (N, W) distances and (N,) masses, on the CPU; tokens are embedded batch_size at a time on self.device and only
-        # the distances are kept. Identical strings are at distance 0 whatever the embedding (e.g. a token without a
-        # vector, which would otherwise be far from itself).
+        # the distances are kept. A token and a word with the same normalized form are at distance 0 whatever the
+        # embedding (e.g. a token without a vector, which would otherwise be far from itself).
         distances = torch.ones(len(tokens), len(words))
         masses = torch.ones(len(tokens))
-        word_index = {word: k for k, word in enumerate(words)}
-        if self._embedder is None:
-            for n, token in enumerate(tokens):
-                if token.lower() in word_index:
-                    distances[n, word_index[token.lower()]] = 0
+        same: dict[str, list[int]] = {}  # normalized form -> the query words that have it
+        for k, word in enumerate(words):
+            same.setdefault(self._embedder.normalize(word), []).append(k)
+        for n, token in enumerate(tokens):
+            distances[n, same.get(self._embedder.normalize(token), [])] = 0
+        if type(self._embedder) is AbstractEmbedder:  # normalization only: exact matching
             return distances, masses
+        exact = distances == 0
         query = self._embedder.embed(words).to(self.device) if words else None
         for begin in range(0, len(tokens), self.batch_size):
             embedded = self._embedder.embed(tokens[begin:begin + self.batch_size]).to(self.device)
             if query is not None:
                 distances[begin:begin + self.batch_size] = self._distance(embedded, query).cpu()
             masses[begin:begin + self.batch_size] = self._distance.mass(embedded).cpu()
-        for n, token in enumerate(tokens):
-            if token in word_index:
-                distances[n, word_index[token]] = 0
+        distances[exact] = 0
         return distances, masses
 
-    def _symbol_table(self, automaton: Automaton, tokens: List[str], distances: torch.Tensor, masses: torch.Tensor) -> torch.Tensor:
+    def _symbol_table(self, automaton: Automaton, tokens: list[str], distances: torch.Tensor, masses: torch.Tensor) -> torch.Tensor:
         # distances: (N, W) for the automaton's query_words in their order
         table = torch.zeros(len(tokens), len(automaton.symbols))
         for k, symbol in enumerate(automaton.symbols):
@@ -86,13 +92,13 @@ class SequenceObserver(AbstractObserver):
     by many regexes is computed once, and prepare(words) computes the words of many regexes in one pass over the
     vocabulary. The base implementation is exact matching (probability 1 iff the distance is 0).
     """
-    def __init__(self, vocabulary: Union[Vocabulary, List[str]], embedder: Optional[AbstractEmbedder] = None,
-                 distance: Optional[AbstractDistance] = None, classes: Optional[Classes] = None, batch_size: int = 65536,
+    def __init__(self, vocabulary: Vocabulary | list[str], embedder: AbstractEmbedder | None = None,
+                 distance: AbstractDistance | None = None, classes: Classes | None = None, batch_size: int = 65536,
                  device="cpu") -> None:
         super().__init__(embedder, distance, classes, batch_size, device)
         self.vocabulary = vocabulary if isinstance(vocabulary, Vocabulary) else Vocabulary(vocabulary)
-        self._word_columns: Dict[str, torch.Tensor] = {}
-        self._masses: Optional[torch.Tensor] = None
+        self._word_columns: dict[str, torch.Tensor] = {}
+        self._masses: torch.Tensor | None = None
 
     def prepare(self, words: Iterable[str]) -> None:
         new_words = [word for word in dict.fromkeys(words) if word not in self._word_columns]
@@ -124,8 +130,8 @@ class JointSoftmaxObserver(SequenceObserver):
     # mass, so the threshold scales with the token (word length for PHOC and Levenshtein); `temperature` sets how
     # sharply the probability falls around it. The query words compete for each token: a token close to two of them
     # splits its probability between them.
-    def __init__(self, vocabulary: Union[Vocabulary, List[str]], embedder: Optional[AbstractEmbedder] = None,
-                 distance: Optional[AbstractDistance] = None, classes: Optional[Classes] = None, temperature: float = 2.0,
+    def __init__(self, vocabulary: Vocabulary | list[str], embedder: AbstractEmbedder | None = None,
+                 distance: AbstractDistance | None = None, classes: Classes | None = None, temperature: float = 2.0,
                  background: float = 0.5, batch_size: int = 65536, device="cpu") -> None:
         super().__init__(vocabulary, embedder, distance, classes, batch_size, device)
         self.temperature = temperature
@@ -139,8 +145,8 @@ class JointSoftmaxObserver(SequenceObserver):
 class SigmoidObserver(SequenceObserver):
     # Each word on its own: P(token is word k) = sigmoid(b * (threshold - d(token, word_k))). With CosineDistance and
     # threshold 0.5 this is the original observer's shifted sigmoid of the cosine similarity, 1 / (1 + exp(-b s + b / 2)).
-    def __init__(self, vocabulary: Union[Vocabulary, List[str]], embedder: Optional[AbstractEmbedder] = None,
-                 distance: Optional[AbstractDistance] = None, classes: Optional[Classes] = None, b: float = 10.,
+    def __init__(self, vocabulary: Vocabulary | list[str], embedder: AbstractEmbedder | None = None,
+                 distance: AbstractDistance | None = None, classes: Classes | None = None, b: float = 10.,
                  threshold: float = .5, batch_size: int = 65536, device="cpu") -> None:
         super().__init__(vocabulary, embedder, distance, classes, batch_size, device)
         self.b = b

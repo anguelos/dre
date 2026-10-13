@@ -1,12 +1,28 @@
+import unicodedata
+
 import torch
-from typing import List, Dict, Optional
+from pylelemmatize.fast_mapper import LemmatizerBMP
 
 from phoc import PHOC
+
+from .default_mapping import default_mapper, identity_mapper
 
 
 class AbstractEmbedder(object):
     """A class that converts tokens to embeddings.
+
+    Every embedder normalizes the characters of a token before embedding it, with a pylelemmatize mapper (case,
+    diacritics, punctuation, ...; default: dre.default_mapping). Tokens reach embedders exactly as they appear in the
+    text, and query words exactly as written in the regex, so the mapper alone decides what counts as the same word.
+    The base class only normalizes; observers use it as is for exact matching.
     """
+    def __init__(self, mapper:LemmatizerBMP | None=None) -> None:
+        self.mapper = default_mapper() if mapper is None else mapper
+
+    def normalize(self, token:str) -> str:
+        # NFC first: pylelemmatize maps characters one by one, so "o" + combining diaeresis must become "ö"
+        return self.mapper(unicodedata.normalize("NFC", token))
+
     @property
     def embedding_size(self) -> int:
         return self.null_embedding.size(0)
@@ -21,7 +37,7 @@ class AbstractEmbedder(object):
     def keys(self):
         raise NotImplementedError
 
-    def embed(self, tokens:List[str]) -> torch.Tensor:
+    def embed(self, tokens:list[str]) -> torch.Tensor:
         # (N, embedding_size); subclasses that can embed many tokens at once override this
         if len(tokens) == 0:
             return self.null_embedding.new_zeros([0, self.embedding_size])
@@ -29,10 +45,17 @@ class AbstractEmbedder(object):
 
 
 class TableEmbedder(AbstractEmbedder):
-    # A fixed table of vectors; tokens outside it get the null embedding.
-    def __init__(self, words:List[str], vectors:torch.Tensor, null_embedding:Optional[torch.Tensor]=None, device="cpu"):
+    # A fixed table of vectors, looked up by normalized token (the table's words are normalized too; the first of
+    # several words with the same normalized form wins); tokens outside it get the null embedding. The default mapper
+    # is the identity: a semantic table distinguishes "US" from "us", so folding case or punctuation would look up the
+    # wrong vectors.
+    def __init__(self, words:list[str], vectors:torch.Tensor, null_embedding:torch.Tensor | None=None, device="cpu",
+                 mapper:LemmatizerBMP | None=None):
+        super().__init__(identity_mapper() if mapper is None else mapper)
         self.device = device
-        self.index = {word: n for n, word in enumerate(words)}
+        self.index = {}
+        for n, word in enumerate(words):
+            self.index.setdefault(self.normalize(word), n)
         null_embedding = torch.zeros(vectors.size(1)) if null_embedding is None else null_embedding
         self.vectors = torch.cat([vectors, null_embedding[None, :].to(vectors.dtype)]).to(device)  # last row: null
         self._null_embedding = self.vectors[-1]
@@ -45,22 +68,22 @@ class TableEmbedder(AbstractEmbedder):
         return self.index.keys()
 
     def __getitem__(self, token: str) -> torch.Tensor:
-        return self.vectors[self.index.get(token, -1)]
+        return self.vectors[self.index.get(self.normalize(token), -1)]
 
-    def embed(self, tokens:List[str]) -> torch.Tensor:
-        rows = torch.tensor([self.index.get(token, len(self.index)) for token in tokens], dtype=torch.long, device=self.vectors.device)
+    def embed(self, tokens:list[str]) -> torch.Tensor:
+        rows = torch.tensor([self.index.get(self.normalize(token), len(self.vectors) - 1) for token in tokens], dtype=torch.long, device=self.vectors.device)
         return self.vectors[rows]
 
 
 class SymbolEmbedder(TableEmbedder):
     # One-hot vectors; values maps every symbol, including the null symbol '', to its dimension.
-    def __init__(self, values:Dict[str, int], device="cpu"):
+    def __init__(self, values:dict[str, int], device="cpu", mapper:LemmatizerBMP | None=None):
         assert '' in values.keys()
         self.num_values = dict(values)
         symbols = list(self.num_values.keys())
         vectors = torch.zeros(len(symbols), len(symbols))
         vectors[torch.arange(len(symbols)), torch.tensor([self.num_values[s] for s in symbols])] = 1
-        super().__init__(symbols, vectors, null_embedding=vectors[symbols.index('')], device=device)
+        super().__init__(symbols, vectors, null_embedding=vectors[symbols.index('')], device=device, mapper=mapper)
 
 
 class Glove50Embedder(TableEmbedder):
@@ -84,16 +107,18 @@ class Glove50Embedder(TableEmbedder):
             embbeding_dict[word] = embeeding.clone().detach()
         return embbeding_dict, embbeding_list
 
-    def __init__(self, glove_path:str="tmp/glove/glove.6B.50d.txt", device="cpu") -> None:
+    def __init__(self, glove_path:str="tmp/glove/glove.6B.50d.txt", device="cpu", mapper:LemmatizerBMP | None=None) -> None:
         self.embbeding_dict, self.embbeding_list = Glove50Embedder.load_glove(glove_path)
         words = list(self.embbeding_dict.keys())
-        super().__init__(words, torch.stack([self.embbeding_dict[w] for w in words]), Glove50Embedder.avg, device=device)
+        super().__init__(words, torch.stack([self.embbeding_dict[w] for w in words]), Glove50Embedder.avg, device=device, mapper=mapper)
 
 
 class PHOCEmbedder(AbstractEmbedder):
-    # Open vocabulary: any string has a PHOC, so there are no keys and no token gets the null embedding.
-    def __init__(self, phoc:Optional[PHOC]=None, device="cpu"):
-        self.phoc = (PHOC() if phoc is None else phoc).to(device)
+    # Open vocabulary: any string has a PHOC, so there are no keys and no token gets the null embedding. Without a
+    # phoc, one is built on the embedder's mapper, whose output alphabet becomes the PHOC's histogram columns.
+    def __init__(self, phoc:PHOC | None=None, device="cpu", mapper:LemmatizerBMP | None=None):
+        super().__init__(mapper)
+        self.phoc = (PHOC(mapper=self.mapper) if phoc is None else phoc).to(device)
         self._null_embedding = torch.zeros(self.phoc.dim, device=device)
 
     @property
@@ -103,17 +128,18 @@ class PHOCEmbedder(AbstractEmbedder):
     def __getitem__(self, token: str) -> torch.Tensor:
         return self.embed([token])[0]
 
-    def embed(self, tokens:List[str]) -> torch.Tensor:
+    def embed(self, tokens:list[str]) -> torch.Tensor:
         if len(tokens) == 0:
             return self._null_embedding.new_zeros([0, self.phoc.dim])
         with torch.no_grad():
-            return self.phoc(list(tokens))
+            return self.phoc([self.normalize(token) for token in tokens])
 
 
 class CharCodeEmbedder(AbstractEmbedder):
-    # A token as its unicode code points, zero-padded to max_length (longer tokens are truncated): the "embedding"
-    # string distances such as Levenshtein work on.
-    def __init__(self, max_length:int=32, device="cpu"):
+    # A normalized token as its unicode code points, zero-padded to max_length (longer tokens are truncated): the
+    # "embedding" string distances such as Levenshtein work on.
+    def __init__(self, max_length:int=32, device="cpu", mapper:LemmatizerBMP | None=None):
+        super().__init__(mapper)
         self.max_length = max_length
         self._null_embedding = torch.zeros(max_length, dtype=torch.long, device=device)
 
@@ -124,9 +150,9 @@ class CharCodeEmbedder(AbstractEmbedder):
     def __getitem__(self, token: str) -> torch.Tensor:
         return self.embed([token])[0]
 
-    def embed(self, tokens:List[str]) -> torch.Tensor:
+    def embed(self, tokens:list[str]) -> torch.Tensor:
         codes = torch.zeros(len(tokens), self.max_length, dtype=torch.long)
         for n, token in enumerate(tokens):
-            token_codes = [ord(c) for c in token[:self.max_length]]
+            token_codes = [ord(c) for c in self.normalize(token)[:self.max_length]]
             codes[n, :len(token_codes)] = torch.tensor(token_codes, dtype=torch.long)
         return codes.to(self._null_embedding.device)

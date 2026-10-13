@@ -3,7 +3,7 @@
 # the inputs forward() accepts, the column layout of the embedding, the column weighting and the distance.
 # Subclasses only implement embed_codes(); everything user-facing lives here.
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
 
 import numpy as np
 import torch
@@ -11,7 +11,7 @@ from pylelemmatize.fast_mapper import LemmatizerBMP
 from torch import Tensor, nn
 
 
-Words = Union[str, Sequence[str], Tuple[Tensor, Tensor]]
+Words = str | Sequence[str] | tuple[Tensor, Tensor]
 
 
 class PHOC(nn.Module, metaclass=ABCMeta):
@@ -20,8 +20,8 @@ class PHOC(nn.Module, metaclass=ABCMeta):
         alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         return LemmatizerBMP(mapping_dict={c: c.lower() for c in alphanumeric})
 
-    def __init__(self, mapper: Optional[LemmatizerBMP] = None, levels: Sequence[int] = (1, 2, 3, 5), occurrence: str = "count",
-                 count_unknown: bool = False, level_weights: Optional[Sequence[float]] = None, max_len: int = 20, len_weight: float = 1.0) -> None:
+    def __init__(self, mapper: LemmatizerBMP | None = None, levels: Sequence[int] = (1, 2, 3, 5), occurrence: str = "count",
+                 count_unknown: bool = False, level_weights: Sequence[float] | None = None, max_len: int = 20, len_weight: float = 1.0) -> None:
         super().__init__()
         if occurrence not in ("count", "presence"):
             raise ValueError(f"occurrence must be 'count' or 'presence', got {occurrence!r}")
@@ -63,7 +63,7 @@ class PHOC(nn.Module, metaclass=ABCMeta):
         parts.append(torch.full((self.max_len,), self.len_weight))
         return torch.cat(parts)
 
-    def encode_strings(self, words: Sequence[str]) -> Tuple[Tensor, Tensor]:
+    def encode_strings(self, words: Sequence[str]) -> tuple[Tensor, Tensor]:
         lengths = torch.tensor([len(word) for word in words], dtype=torch.long)
         codes = self.encoder.str_to_intlabel_seq(self.mapper("".join(words)))
         codes = torch.from_numpy(codes.astype(np.int64))

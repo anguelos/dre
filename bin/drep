@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""drep: grep for word regexes, tolerant to OCR and spelling noise (dre + PHOC).
+
+Every line of the input is searched. Matching lines are printed as file:line: text, with each match in [brackets].
+    drep --regex="federal ( tax ) ? register" notes.txt
+    drep --exact --regex="federal register" notes.txt
+    cat notes.txt | drep -v --regex="federal register"
+"""
+import itertools
+import sys
+from dataclasses import dataclass
+
+import fargv
+
+import dre
+
+
+@dataclass
+class Config:
+    """grep for word regexes, tolerant to OCR and spelling noise."""
+    regex: str
+    "Word regex: words, '.', '*', '?', '+', '|' and parentheses, separated by spaces."
+    exact: bool = False
+    "Match words exactly instead of by PHOC similarity."
+    threshold: float = 0.5
+    "Smallest match probability shown."
+    files: list = fargv.FargvVariadic(default=[])
+    "Text files to search; standard input if none."
+    verbosity: int = fargv.FargvInt(0, short_name="v", is_count_switch=True)
+    "-v: show each match's probability."
+
+
+def read_lines(files: list[str]) -> tuple[list[str], list[tuple[str, int]]]:
+    lines, origins = [], []
+    for name in files or ["-"]:
+        stream = sys.stdin if name == "-" else open(name, encoding="utf-8", errors="replace")
+        for number, line in enumerate(stream, 1):
+            lines.append(line.rstrip("\n"))
+            origins.append((name, number))
+    return lines, origins
+
+
+def main() -> None:
+    cfg, _ = fargv.parse(Config)
+    lines, origins = read_lines(cfg.files)
+
+    if cfg.exact:
+        corpus = dre.Corpus(lines, dre.ExactObserver)
+    else:
+        corpus = dre.Corpus(lines, lambda vocabulary: dre.JointSoftmaxObserver(vocabulary, dre.PHOCEmbedder(), dre.L1Distance()))
+
+    hits = corpus.search(cfg.regex, min_probability=cfg.threshold, order="position")
+    for document, line_hits in itertools.groupby(hits, key=lambda hit: hit.document):
+        line, shown, end = lines[document], [], 0
+        for hit in line_hits:
+            probability = f"{hit.probability:.2f}:" if cfg.verbosity else ""
+            shown.append(f"{line[end:hit.start]}[{probability}{hit.text}]")
+            end = hit.end
+        name, number = origins[document]
+        print(f"{name}:{number}: {''.join(shown)}{line[end:]}")
+
+
+if __name__ == "__main__":
+    main()

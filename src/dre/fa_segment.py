@@ -1,6 +1,5 @@
 from collections import defaultdict
 import numpy as np
-from typing import List, Set, Tuple, Union
 
 
 from .fa_state import FAState
@@ -36,12 +35,12 @@ class NFASegment(object):
         return tmp_segment
 
 
-    def get_all_states_and_transitions(self) -> Tuple[Tuple[FAState], Tuple[FAState]]:
+    def get_all_states_and_transitions(self) -> tuple[tuple[FAState], tuple[FAState]]:
         transitions, states = NFASegment._get_all_states_and_transitions(self.source, set(), set())
         return tuple(sorted(transitions)), tuple(sorted(states))
 
     @staticmethod
-    def _get_all_states_and_transitions(state:FAState,visited_states:Set[FAState], visited_transitions:Set[FATransition]) -> Tuple[Set[FAState], Set[FAState]]:
+    def _get_all_states_and_transitions(state:FAState,visited_states:set[FAState], visited_transitions:set[FATransition]) -> tuple[set[FAState], set[FAState]]:
         result_states = visited_states.union({state})
         result_transitions = visited_transitions.copy()
         for incoming in state.incoming_transitions:

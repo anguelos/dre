@@ -1,0 +1,82 @@
+digraph classes {
+  graph [rankdir=TB, fontname="Helvetica", fontsize=11, nodesep=0.3, ranksep=0.5, compound=true, newrank=true,
+         label="dre / phoc — classes (generated from doc/classes.dot)", labelloc=t];
+  node [shape=plain, fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=8];
+  subgraph cluster_0 {
+    label="Collection — search.py"; style=rounded; color="#999999";
+  "Corpus" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>Corpus</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">text: str (documents + END_OF_DOCUMENT)<BR/>spans (2, T), token_ids (T,)<BR/>char_offsets, token_offsets (D+1,)<BR/>vocabulary, observer, matcher</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">matches(regex) → Matches<BR/>scores(regex) → (D,)<BR/>search(regex, min_probability, order) → list[Hit]<BR/>document(n) → str</TD></TR></TABLE>>];
+  "Hit" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>Hit</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">document, start, end<BR/>probability, text</TD></TR></TABLE>>];
+  }
+  subgraph cluster_1 {
+    label="Tokens — tokenizing.py"; style=rounded; color="#999999";
+  "Tokenizer" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>Tokenizer</B></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">splits text into word-like atoms; no normalization</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">mapper: LemmatizerBMP (character codes)<BR/>categories: SIMPLE KEPT DUMPED ATTACHING END</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">tokenize(text) → spans (2, T)<BR/>pretokenized()</TD></TR></TABLE>>];
+  "Vocabulary" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>Vocabulary</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">tokens: list[str]  (id 0 = END_OF_DOCUMENT)</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">from_spans(text, spans) → (Vocabulary, ids)<BR/>encode(tokens) → ids</TD></TR></TABLE>>];
+  }
+  subgraph cluster_2 {
+    label="Regex compiler — wordre_parser.py, fa_*.py"; style=rounded; color="#999999";
+  "WordParser" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>WordParser</B></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">sly grammar; compile_regex(regex, normalize) → Automaton</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">parse_str(regex) → FAGraph</TD></TR></TABLE>>];
+  "FAGraph" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>FAGraph</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">nfa_segment: NFASegment (FAState, FATransition)</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">to_automaton() → Automaton<BR/>plot()</TD></TR></TABLE>>];
+  "Automaton" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>Automaton</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">symbols: list[str]<BR/>transitions (K, S, S), start, accept (S,)</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">any_mask, word_mask<BR/>reversed() → Automaton<BR/>determinize(letters, search) → DFA</TD></TR></TABLE>>];
+  "DFA" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>DFA</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">letters (L, K), transitions (D, L)<BR/>accept (D,), initial</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">minimized() → DFA</TD></TR></TABLE>>];
+  }
+  subgraph cluster_3 {
+    label="Observation — abstract_observer.py, abstract_embedder.py, abstract_distance.py"; style=rounded; color="#999999";
+  "AbstractObserver" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><I>AbstractObserver</I></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">token → probability of each regex symbol</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">embedder, distance, classes</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">normalize(token) → str<BR/>observe_sequence(automaton, tokens) → (T, K)</TD></TR></TABLE>>];
+  "SequenceObserver" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>SequenceObserver</B></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">base technique: exact (distance 0)</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">vocabulary, cache: word → distances</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">prepare(words)<BR/>observe(automaton) → (V, K)</TD></TR></TABLE>>];
+  "ExactObserver" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>ExactObserver</B></TD></TR></TABLE>>];
+  "JointSoftmaxObserver" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>JointSoftmaxObserver</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">temperature, background</TD></TR></TABLE>>];
+  "SigmoidObserver" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>SigmoidObserver</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">b, threshold</TD></TR></TABLE>>];
+  "AbstractEmbedder" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><I>AbstractEmbedder</I></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">the base class only normalizes (exact matching)</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">mapper: LemmatizerBMP (default_mapping)</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">normalize(token) → str<BR/>embed(tokens) → (N, D)</TD></TR></TABLE>>];
+  "TableEmbedder" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>TableEmbedder</B></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">default mapper: identity (no normalization)</FONT></TD></TR></TABLE>>];
+  "SymbolEmbedder" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>SymbolEmbedder</B></TD></TR></TABLE>>];
+  "Glove50Embedder" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>Glove50Embedder</B></TD></TR></TABLE>>];
+  "PHOCEmbedder" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>PHOCEmbedder</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">phoc: PHOC</TD></TR></TABLE>>];
+  "CharCodeEmbedder" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>CharCodeEmbedder</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">max_length</TD></TR></TABLE>>];
+  "AbstractDistance" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><I>AbstractDistance</I></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">base: L1 distance, L1 norm</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">__call__(a, b) → (N, M)<BR/>mass(a) → (N,)</TD></TR></TABLE>>];
+  "L1Distance" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>L1Distance</B></TD></TR></TABLE>>];
+  "CosineDistance" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>CosineDistance</B></TD></TR></TABLE>>];
+  "LevenshteinDistance" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>LevenshteinDistance</B></TD></TR></TABLE>>];
+  "PHOC" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>PHOC</B></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">phoc package (step01 interface, step02 overlap)</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">levels, occurrence, mapper</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">forward(words) → (N, dim)<BR/>distance(a, b)</TD></TR></TABLE>>];
+  "LemmatizerBMP" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>LemmatizerBMP</B></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">pylelemmatize character mapper</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">__call__(text) → text</TD></TR></TABLE>>];
+  }
+  subgraph cluster_4 {
+    label="Engine — abstract_matcher.py"; style=rounded; color="#999999";
+  "AbstractMatcher" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><I>AbstractMatcher</I></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">one token sequence; token 0 resets; base: whole-sequence max-product</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">anchored, device</TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">run(automaton, emissions, token_ids, min_probability) → Matches<BR/>step(state, emission, transitions)</TD></TR></TABLE>>];
+  "ViterbiMatcher" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>ViterbiMatcher</B></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">windows around resembling tokens, batched</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">min_emission, max_segments, max_tokens</TD></TR></TABLE>>];
+  "DFAMatcher" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>DFAMatcher</B></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="9" COLOR="#555555">sum-product over DFA states; reversed DFA for starts</FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">max_states</TD></TR></TABLE>>];
+  "Matches" [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD BGCOLOR="#dde7f3"><B>Matches</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT">end_probability (T,)<BR/>start (T,)</TD></TR></TABLE>>];
+  }
+  "TableEmbedder" -> "AbstractEmbedder" [arrowhead=empty];
+  "SymbolEmbedder" -> "TableEmbedder" [arrowhead=empty];
+  "Glove50Embedder" -> "TableEmbedder" [arrowhead=empty];
+  "PHOCEmbedder" -> "AbstractEmbedder" [arrowhead=empty];
+  "CharCodeEmbedder" -> "AbstractEmbedder" [arrowhead=empty];
+  "L1Distance" -> "AbstractDistance" [arrowhead=empty];
+  "CosineDistance" -> "AbstractDistance" [arrowhead=empty];
+  "LevenshteinDistance" -> "AbstractDistance" [arrowhead=empty];
+  "SequenceObserver" -> "AbstractObserver" [arrowhead=empty];
+  "ExactObserver" -> "SequenceObserver" [arrowhead=empty];
+  "JointSoftmaxObserver" -> "SequenceObserver" [arrowhead=empty];
+  "SigmoidObserver" -> "SequenceObserver" [arrowhead=empty];
+  "ViterbiMatcher" -> "AbstractMatcher" [arrowhead=empty];
+  "DFAMatcher" -> "ViterbiMatcher" [arrowhead=empty];
+  "Corpus" -> "Tokenizer" [style=dashed, arrowhead=vee, color="#666666", label="tokenizes with"];
+  "Corpus" -> "Vocabulary" [style=dashed, arrowhead=vee, color="#666666", label="has"];
+  "Corpus" -> "SequenceObserver" [style=dashed, arrowhead=vee, color="#666666", label="make_observer(vocabulary)"];
+  "Corpus" -> "AbstractMatcher" [style=dashed, arrowhead=vee, color="#666666", label="runs"];
+  "Corpus" -> "WordParser" [style=dashed, arrowhead=vee, color="#666666", label="compile_regex"];
+  "Corpus" -> "Hit" [style=dashed, arrowhead=vee, color="#666666", label="returns"];
+  "WordParser" -> "FAGraph" [style=dashed, arrowhead=vee, color="#666666", label="builds"];
+  "FAGraph" -> "Automaton" [style=dashed, arrowhead=vee, color="#666666", label="to_automaton"];
+  "Automaton" -> "DFA" [style=dashed, arrowhead=vee, color="#666666", label="determinize"];
+  "AbstractObserver" -> "AbstractEmbedder" [style=dashed, arrowhead=vee, color="#666666", label="has"];
+  "AbstractObserver" -> "AbstractDistance" [style=dashed, arrowhead=vee, color="#666666", label="has"];
+  "SequenceObserver" -> "Vocabulary" [style=dashed, arrowhead=vee, color="#666666", label="observes"];
+  "AbstractEmbedder" -> "LemmatizerBMP" [style=dashed, arrowhead=vee, color="#666666", label="normalizes with"];
+  "PHOCEmbedder" -> "PHOC" [style=dashed, arrowhead=vee, color="#666666", label="has"];
+  "Tokenizer" -> "LemmatizerBMP" [style=dashed, arrowhead=vee, color="#666666", label="encodes with"];
+  "AbstractMatcher" -> "Automaton" [style=dashed, arrowhead=vee, color="#666666", label="runs"];
+  "AbstractMatcher" -> "Matches" [style=dashed, arrowhead=vee, color="#666666", label="returns"];
+  "DFAMatcher" -> "DFA" [style=dashed, arrowhead=vee, color="#666666", label="builds"];
+}

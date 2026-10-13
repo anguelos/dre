@@ -1,6 +1,7 @@
 import pytest
 
 from dre import tokenizing
+from dre.optional import MissingDependency
 from dre.tokenizing import naive_sentence_tokenize, naive_word_tokenize, words_of_sentences
 
 
@@ -18,8 +19,9 @@ def test_words_of_sentences_naive():
 
 
 def test_words_of_sentences_auto_without_nltk(monkeypatch):
-    monkeypatch.setattr(tokenizing, "nltk", None)
-    assert list(words_of_sentences("Hi you. Bye!")) == [["Hi", "you", "."], ["Bye", "!"]]
+    monkeypatch.setattr(tokenizing, "nltk", MissingDependency("nltk"))
+    with pytest.warns(UserWarning, match="pip install nltk"):
+        assert list(words_of_sentences("Hi you. Bye!")) == [["Hi", "you", "."], ["Bye", "!"]]
 
 
 def test_words_of_sentences_auto_nltk_without_data(monkeypatch):
@@ -29,7 +31,8 @@ def test_words_of_sentences_auto_nltk_without_data(monkeypatch):
             raise LookupError("punkt not found")
 
     monkeypatch.setattr(tokenizing, "nltk", NltkWithoutData)
-    assert list(words_of_sentences("Hi you. Bye!")) == [["Hi", "you", "."], ["Bye", "!"]]
+    with pytest.warns(UserWarning, match="nltk.downloader"):
+        assert list(words_of_sentences("Hi you. Bye!")) == [["Hi", "you", "."], ["Bye", "!"]]
 
 
 def test_words_of_sentences_auto_with_nltk(monkeypatch):
@@ -42,8 +45,8 @@ def test_words_of_sentences_auto_with_nltk(monkeypatch):
 
 
 def test_words_of_sentences_nltk_missing(monkeypatch):
-    monkeypatch.setattr(tokenizing, "nltk", None)
-    with pytest.raises(ImportError):
+    monkeypatch.setattr(tokenizing, "nltk", MissingDependency("nltk"))
+    with pytest.warns(UserWarning), pytest.raises(ImportError):
         list(words_of_sentences("Hi.", tokenizer="nltk"))
 
 

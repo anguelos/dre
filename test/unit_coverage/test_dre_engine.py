@@ -3,17 +3,42 @@ import random
 import pytest
 import torch
 
-from dre import (ANY, AbstractMatcher, CharCodeEmbedder, CosineDistance, ExactObserver, JointSoftmaxObserver, L1Distance,
+from dre import (ANY, AbstractMatcher, CharCodeEmbedder, Corpus, CosineDistance, ExactObserver, JointSoftmaxObserver, L1Distance,
                  LevenshteinDistance, PHOCEmbedder, SigmoidObserver, TableEmbedder, ViterbiMatcher, Vocabulary, compile_regex)
 from dre.abstract_matcher import batches_by_size, candidate_segments, longest_match
+from dre.default_mapping import default_mapper
 from phoc import PHOC
 
 
+def stitch(emissions, documents):
+    # Documents of ids into `emissions` -> one sequence (ids + 1: id 0 is END_OF_DOCUMENT, which follows each document)
+    # and the emissions with a row for it; plus each document's first position.
+    sequence = torch.cat([torch.cat([d + 1, torch.zeros(1, dtype=torch.long)]) for d in documents]) if documents else torch.zeros(0, dtype=torch.long)
+    starts = torch.cumsum(torch.tensor([0] + [d.numel() + 1 for d in documents]), 0)
+    return torch.cat([torch.zeros(1, emissions.size(1)), emissions]), sequence, starts
+
+
+def document_scores(matcher, automaton, emissions, documents):
+    # Each document's best match (anchored: the probability that the whole document matches), from one run.
+    emissions, sequence, starts = stitch(emissions, documents)
+    p = matcher.run(automaton, emissions, sequence, None).end_probability
+    if matcher.anchored:
+        return torch.tensor([float(p[starts[n + 1] - 2]) if d.numel() else 0.0 for n, d in enumerate(documents)])
+    return torch.tensor([float(p[starts[n]:starts[n + 1]].max()) if d.numel() else 0.0 for n, d in enumerate(documents)])
+
+
+def document_matches(matcher, automaton, emissions, documents, min_probability=0.01):
+    # Every match with at least min_probability as (document, start, end (exclusive), probability) tensors, positions
+    # within the document.
+    emissions, sequence, starts = stitch(emissions, documents)
+    matches = matcher.run(automaton, emissions, sequence, min_probability)
+    ends = ((matches.end_probability >= min_probability) & (matches.end_probability > 0)).nonzero().reshape(-1)
+    document = torch.searchsorted(starts, ends, right=True) - 1
+    return document, matches.start[ends] - starts[document], ends + 1 - starts[document], matches.end_probability[ends]
+
+
 def search(regex, texts):
-    automaton = compile_regex(regex)
-    observer = ExactObserver(Vocabulary.from_documents(text.split() for text in texts))
-    documents = [observer.vocabulary.encode(text.split()) for text in texts]
-    return ViterbiMatcher().scores(automaton, observer.observe(automaton), documents).tolist()
+    return Corpus(texts).scores(regex).tolist()
 
 
 def phoc_observer(vocabulary, **kwargs):
@@ -64,19 +89,19 @@ def test_soft_scores_are_best_path_products():
     emissions[2] = torch.tensor([0.0, 0.1, 0.8])
     documents = [torch.tensor([0, 1]), torch.tensor([0, 2]), torch.tensor([1, 0]), torch.tensor([3, 3])]
     for matcher in [AbstractMatcher(), ViterbiMatcher()]:
-        assert torch.allclose(matcher.scores(automaton, emissions, documents), torch.tensor([0.45, 0.72, 0.0, 0.0]))
+        assert torch.allclose(document_scores(matcher, automaton, emissions, documents), torch.tensor([0.45, 0.72, 0.0, 0.0]))
 
 
 def test_phoc_emissions():
     automaton = compile_regex("register . spinners")
     vocabulary = ["register", "registers", "banana", "spinners", "sphinnas"]
-    table = phoc_observer(vocabulary).observe(automaton)
+    table = phoc_observer(vocabulary).observe(automaton)[1:]  # row 0 is END_OF_DOCUMENT
     register, spinners, any_ = automaton.symbols.index("register"), automaton.symbols.index("spinners"), automaton.symbols.index(ANY)
     assert torch.equal(table[:, any_], torch.ones(5))
     assert table[0, register] > 0.99 and table[3, spinners] > 0.99
     assert table[0, register] > table[1, register] > table[2, register]
     assert table[4, spinners] > table[2, spinners]
-    assert torch.equal(phoc_observer(vocabulary).observe(compile_regex(". .")), torch.ones(5, 1))
+    assert torch.equal(phoc_observer(vocabulary).observe(compile_regex(". .")), torch.ones(6, 1))
 
 
 def test_vocabulary_distances_expand_to_document_distances():
@@ -84,7 +109,7 @@ def test_vocabulary_distances_expand_to_document_distances():
     observer = phoc_observer(Vocabulary.from_documents([document]), batch_size=3)
     observer.prepare(["federal", "register"])
     distances = torch.stack([observer._word_columns[w] for w in ["federal", "register"]], dim=1)
-    phoc = PHOC()
+    phoc = PHOC(mapper=default_mapper())  # what PHOCEmbedder builds
     token_ids = observer.vocabulary.encode(document)
     assert torch.allclose(distances[token_ids], PHOC.distance(phoc(document), phoc(["federal", "register"])))  # every running token
     assert torch.allclose(observer._masses[token_ids], phoc(document).abs().sum(dim=1))
@@ -109,7 +134,7 @@ def test_observe_sequence_equals_vocabulary_rows():
 
 def test_phoc_emissions_are_a_joint_softmax():
     automaton = compile_regex("register | registers")
-    table = phoc_observer(["register", "registers", "banana"]).observe(automaton)
+    table = phoc_observer(["register", "registers", "banana"]).observe(automaton)[1:]
     assert torch.all(table.sum(dim=1) <= 1 + 1e-6)
     register, registers = automaton.symbols.index("register"), automaton.symbols.index("registers")
     assert table[0, register] > table[0, registers] > 0.001  # a close second query word takes a share
@@ -120,7 +145,7 @@ def test_sigmoid_observer_is_the_original_cosine_sigmoid():
     words = ["king", "queen", "apple"]
     vectors = torch.tensor([[1.0, 0.2], [0.9, 0.4], [-0.3, 1.0]])
     observer = SigmoidObserver(words + ["unknown"], TableEmbedder(words, vectors), CosineDistance(), b=10.)
-    table = observer.observe(compile_regex("king"))[:, 0]
+    table = observer.observe(compile_regex("king"))[1:, 0]
     similarity = torch.cosine_similarity(vectors, vectors[0:1], dim=1)
     assert torch.allclose(table[:3], 1 / (1 + torch.exp(-10 * similarity + 5)), atol=1e-6)
     assert table[3] < 0.01  # no vector: cosine distance 1
@@ -155,14 +180,14 @@ def test_longest_match(regex, longest):
 def test_segments_are_windows_around_resembling_tokens():
     automaton = compile_regex("a . c")  # matches span 3 tokens: keep 2 tokens around each resembling token
     vocabulary_size = 4  # 0 = a, 1 = c, 2 and 3 = other words
-    emissions = ExactObserver(["a", "c", "x", "y"]).observe(automaton)
+    emissions = ExactObserver(["a", "c", "x", "y"]).observe(automaton)[1:]  # row 0 is END_OF_DOCUMENT
     documents = [torch.tensor([2, 2, 2, 0, 3, 1, 2, 2, 2, 2, 2, 2]), torch.tensor([3, 3]), torch.tensor([1, 2])]
-    segments, owners, positions = candidate_segments(automaton, emissions, documents, 1e-4)
-    assert [s.tolist() for s in segments] == [[2, 2, 0, 3, 1, 2, 2], [1, 2]]
-    assert owners.tolist() == [0, 2]
-    assert positions.tolist() == [1, 0]
-    assert emissions.size(0) == vocabulary_size
-    assert candidate_segments(automaton, emissions, [torch.tensor([], dtype=torch.long)], 1e-4)[0] == []
+    emissions, sequence, _ = stitch(emissions, documents)  # ids + 1; END_OF_DOCUMENT (0) after each document
+    segments, positions = candidate_segments(automaton, emissions, sequence, 1e-4)
+    assert [(s - 1).tolist() for s in segments] == [[2, 2, 0, 3, 1, 2, 2], [1, 2]]  # windows stop at END_OF_DOCUMENT
+    assert positions.tolist() == [1, 16]
+    assert emissions.size(0) == vocabulary_size + 1
+    assert candidate_segments(automaton, emissions, torch.tensor([], dtype=torch.long), 1e-4)[0] == []
 
 
 def test_windowed_scores_equal_whole_document_scores():
@@ -172,15 +197,15 @@ def test_windowed_scores_equal_whole_document_scores():
         automaton = compile_regex(regex)
         emissions = torch.rand(6, len(automaton.symbols), generator=generator) * (torch.rand(6, 1, generator=generator) > 0.5)
         emissions[:, automaton.any_mask] = 1
-        whole = AbstractMatcher().scores(automaton, emissions, documents)
-        assert torch.allclose(ViterbiMatcher(min_emission=0.0).scores(automaton, emissions, documents), whole), regex
-        windowed = ViterbiMatcher(min_emission=1e-9, max_segments=7, max_tokens=60).scores(automaton, emissions, documents)
+        whole = document_scores(AbstractMatcher(), automaton, emissions, documents)
+        assert torch.allclose(document_scores(ViterbiMatcher(min_emission=0.0), automaton, emissions, documents), whole), regex
+        windowed = document_scores(ViterbiMatcher(min_emission=1e-9, max_segments=7, max_tokens=60), automaton, emissions, documents)
         assert torch.allclose(windowed, whole), regex
-        pruned = ViterbiMatcher(min_emission=0.3).scores(automaton, emissions, documents)
+        pruned = document_scores(ViterbiMatcher(min_emission=0.3), automaton, emissions, documents)
         exact = whole >= 0.3
         assert torch.allclose(pruned[exact], whole[exact]) and torch.all(pruned <= whole + 1e-6), regex
         for anchored in [ViterbiMatcher(anchored=True), AbstractMatcher(anchored=True)]:
-            assert torch.allclose(anchored.scores(automaton, emissions, documents), AbstractMatcher(anchored=True).scores(automaton, emissions, documents))
+            assert torch.allclose(document_scores(anchored, automaton, emissions, documents), document_scores(AbstractMatcher(anchored=True), automaton, emissions, documents))
 
 
 def test_batches_by_size():
@@ -192,13 +217,13 @@ def test_token_classes_and_apostrophes():
     assert automaton.symbols == ["'s", "<number>", "<punct>", "what"]
     classes = {"<number>": str.isdigit, "<punct>": lambda t: t in {"?", "."}}
     vocabulary = ["what", "'s", "42", "?", "x"]
-    table = ExactObserver(vocabulary, classes=classes).observe(automaton)
+    table = ExactObserver(vocabulary, classes=classes).observe(automaton)[1:]  # row 0 is END_OF_DOCUMENT
     assert table[:, automaton.symbols.index("<number>")].tolist() == [0, 0, 1, 0, 0]
     assert table[:, automaton.symbols.index("<punct>")].tolist() == [0, 0, 0, 1, 0]
     assert table[:, automaton.symbols.index("'s")].tolist() == [0, 1, 0, 0, 0]
     with pytest.raises(ValueError):
         ExactObserver(vocabulary).observe(automaton)
-    soft = phoc_observer(vocabulary, classes=classes).observe(automaton)
+    soft = phoc_observer(vocabulary, classes=classes).observe(automaton)[1:]
     assert torch.equal(soft[:, automaton.symbols.index("<number>")], table[:, automaton.symbols.index("<number>")])
     with pytest.raises(ValueError):
         phoc_observer(vocabulary).observe(automaton)
@@ -206,18 +231,18 @@ def test_token_classes_and_apostrophes():
 
 def test_anchored_matching_covers_the_whole_document():
     automaton = compile_regex("a b")
-    emissions = ExactObserver(["a", "b", "x"]).observe(automaton)
+    emissions = ExactObserver(["a", "b", "x"]).observe(automaton)[1:]  # row 0 is END_OF_DOCUMENT
     documents = [torch.tensor([0, 1]), torch.tensor([2, 0, 1]), torch.tensor([0, 1, 2]), torch.tensor([], dtype=torch.long)]
-    assert ViterbiMatcher().scores(automaton, emissions, documents).tolist() == [1, 1, 1, 0]
-    assert ViterbiMatcher(anchored=True).scores(automaton, emissions, documents).tolist() == [1, 0, 0, 0]
+    assert document_scores(ViterbiMatcher(), automaton, emissions, documents).tolist() == [1, 1, 1, 0]
+    assert document_scores(ViterbiMatcher(anchored=True), automaton, emissions, documents).tolist() == [1, 0, 0, 0]
     soft = torch.tensor([[0.9, 0.0], [0.0, 0.8], [0.1, 0.1]])
-    assert torch.allclose(ViterbiMatcher(anchored=True).scores(automaton, soft, [torch.tensor([0, 1]), torch.tensor([0, 1, 2])]), torch.tensor([0.72, 0.0]))
+    assert torch.allclose(document_scores(ViterbiMatcher(anchored=True), automaton, soft, [torch.tensor([0, 1]), torch.tensor([0, 1, 2])]), torch.tensor([0.72, 0.0]))
 
 
 def test_documents_without_resemblance_are_skipped():
     automaton = compile_regex("a")
     emissions = torch.tensor([[1.0], [0.0]])
-    scores = ViterbiMatcher().scores(automaton, emissions, [torch.tensor([1, 1]), torch.tensor([1, 0]), torch.tensor([], dtype=torch.long)])
+    scores = document_scores(ViterbiMatcher(), automaton, emissions, [torch.tensor([1, 1]), torch.tensor([1, 0]), torch.tensor([], dtype=torch.long)])
     assert scores.tolist() == [0.0, 1.0, 0.0]
 
 

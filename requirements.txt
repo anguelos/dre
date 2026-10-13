@@ -1,27 +1,7 @@
-# Core (always required)
-numpy
-sly
-fargv
-matplotlib
-networkx
-torch
-tqdm
-pylelemmatize
-
-# Optional — install as needed
-# jax            (pip install dre[jax])
-# nltk           (pip install dre[nltk])  better sentence/word tokenization than the built-in naive one
-
-# Test
-pytest
-pytest-cov
-coverage
-
-# Dev
-ipython
-graphviz
-
-# Docs
-sphinx
-sphinx-rtd-theme
-myst-parser
+# The dependencies are declared once, in setup.py:
+#   pip install -e .                 bare bones: the engine, PHOC and their command-line tools
+#   pip install -e ".[recommended]"  plus every optional dependency (some also need apt packages: see src/dre/optional.py)
+#   pip install -e ".[test]"         recommended + pytest, pytest-cov, coverage
+#   pip install -e ".[docs]"         sphinx, sphinx-rtd-theme, myst-parser
+#   pip install -e ".[dev]"          all of the above + ipython, ruff, build
+-e .[dev]

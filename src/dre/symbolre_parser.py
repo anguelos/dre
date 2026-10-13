@@ -5,9 +5,7 @@ from abstract_nfa import FAGraph
 
 from .abstract_parser import Lexer,  AbstractParser
 from abstract_nfa import FAGraph
-from matplotlib import pyplot as plt
 from collections import defaultdict
-from typing import Union
 
 
 
