@@ -7,15 +7,17 @@
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
-from typing import Dict, List
 
 import fargv
-import ir_measures
-from ir_measures import AP, RR, P, R, nDCG
+from dre.optional import optional_import
 
 from trec_io import atomic_write, read_qrels, read_queries, read_run
 
-MEASURES = [AP, nDCG @ 10, P @ 10, R @ 1000, RR]
+ir_measures = optional_import("ir_measures")
+
+
+def measures() -> list:
+    return [ir_measures.AP, ir_measures.nDCG @ 10, ir_measures.P @ 10, ir_measures.R @ 1000, ir_measures.RR]
 
 
 @dataclass
@@ -35,11 +37,11 @@ def main() -> None:
     qrels = read_qrels(cfg.qrels)
     families = {query.qid: query.family for query in read_queries(cfg.queries)}
     run = {qid: {docno: -float(rank) for rank, (docno, _) in enumerate(ranked, start=1)} for qid, ranked in read_run(cfg.run).items() if qid in qrels}
-    scores: Dict[str, Dict[str, float]] = {qid: {str(m): 0.0 for m in MEASURES} for qid in qrels}
-    for metric in ir_measures.iter_calc(MEASURES, qrels, run):
+    scores: dict[str, dict[str, float]] = {qid: {str(m): 0.0 for m in measures()} for qid in qrels}
+    for metric in ir_measures.iter_calc(measures(), qrels, run):
         scores[metric.query_id][str(metric.measure)] = metric.value
-    names = [str(m) for m in MEASURES]
-    groups: Dict[str, List[str]] = {}
+    names = [str(m) for m in measures()]
+    groups: dict[str, list[str]] = {}
     for qid in sorted(scores):
         groups.setdefault(families[qid], []).append(qid)
     groups["all"] = sorted(scores)

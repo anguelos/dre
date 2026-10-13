@@ -8,7 +8,6 @@ import re
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple
 
 import fargv
 
@@ -27,7 +26,7 @@ class Config:
     "Queries with more relevant documents than this are dropped; match it to the run depth."
 
 
-def matching_queries(patterns: List[Tuple[str, re.Pattern, List[str]]], doc: Tuple[str, str]) -> Tuple[str, List[str]]:
+def matching_queries(patterns: list[tuple[str, re.Pattern, list[str]]], doc: tuple[str, str]) -> tuple[str, list[str]]:
     padded = " " + doc[1]
     return doc[0], [qid for qid, pattern, required in patterns if may_match(required, padded) and pattern.search(doc[1])]
 

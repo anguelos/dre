@@ -8,13 +8,14 @@ import os
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple
 
 import fargv
-import regex
+from dre.optional import optional_import
 
 from trec_io import Query, Run, parallel_imap, read_queries, read_token_strings, write_run
 from word_regex import query_tokens, required_words, word_regex_body
+
+regex = optional_import("regex")
 
 
 @dataclass
@@ -36,7 +37,7 @@ def edit_budget(query: Query, edit_rate: float) -> int:
     return max(1, math.floor(edit_rate * sum(len(word) for word in words)))
 
 
-def best_edits(patterns: List[Tuple[str, "regex.Pattern"]], doc: Tuple[str, str]) -> Tuple[str, List[Tuple[str, int]]]:
+def best_edits(patterns: list[tuple[str, "regex.Pattern"]], doc: tuple[str, str]) -> tuple[str, list[tuple[str, int]]]:
     found = []
     for qid, pattern in patterns:
         match = pattern.search(doc[1])

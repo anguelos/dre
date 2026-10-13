@@ -6,7 +6,6 @@
 #     number of matching rules of the dominant label; the predicted label is the arg-max, ties and no match going to
 #     the label with the lowest index (as torch.argmax does in their code).
 import re
-from typing import Dict, List, Tuple
 
 # The punctuation set and number test of their fsa_to_tensor.py.
 PUNCTUATIONS = {",", "，", ":", "：", "!", "！", "《", "》", "。", "；", ".", "(", ")", "（", "）", "|", "?", '"'}
@@ -28,7 +27,7 @@ RULE_FILES = {"ATIS": "rules.v0.config", "TREC": "rules.old.config", "SMS": "rul
 _TOKEN = re.compile(r"\{\d+(?:,\d+)?\}|[$%&*+?|()]|[A-Za-z'`]+")
 
 
-def read_rules(text: str) -> List[Tuple[str, str]]:
+def read_rules(text: str) -> list[tuple[str, str]]:
     # (label, rule) pairs in file order.
     rules, label = [], None
     for line in text.split("\n"):
@@ -43,9 +42,9 @@ def read_rules(text: str) -> List[Tuple[str, str]]:
     return rules
 
 
-def _expand_ranges(tokens: List[str]) -> List[str]:
+def _expand_ranges(tokens: list[str]) -> list[str]:
     # X{m} → X repeated m times; X{m,n} → X m times followed by n-m nested optional copies: X{0,2} → ( X ( X ) ? ) ?
-    out: List[str] = []
+    out: list[str] = []
     for token in tokens:
         quantifier = re.fullmatch(r"\{(\d+)(?:,(\d+))?\}", token)
         if not quantifier:
@@ -65,7 +64,7 @@ def _expand_ranges(tokens: List[str]) -> List[str]:
         low = int(quantifier.group(1))
         high = int(quantifier.group(2)) if quantifier.group(2) else low
         out += atom * low
-        optional: List[str] = []
+        optional: list[str] = []
         for _ in range(high - low):
             optional = ["(", *atom, *optional, ")", "?"]
         out += optional
@@ -80,7 +79,7 @@ def to_dre(rule: str) -> str:
     return " ".join({"$": ".", "%": "<number>", "&": "<punct>"}.get(token, token) for token in tokens)
 
 
-def aggregate(rule_scores: List[List[float]], rule_labels: List[str], labels: List[str], dataset: str) -> List[int]:
+def aggregate(rule_scores: list[list[float]], rule_labels: list[str], labels: list[str], dataset: str) -> list[int]:
     # rule_scores[s][r]: score of rule r on sentence s. Returns the predicted label index per sentence.
     index = {label: n for n, label in enumerate(labels)}
     predictions = []
@@ -95,8 +94,8 @@ def aggregate(rule_scores: List[List[float]], rule_labels: List[str], labels: Li
     return predictions
 
 
-def rules_by_label(rules: List[Tuple[str, str]]) -> Dict[str, List[str]]:
-    grouped: Dict[str, List[str]] = {}
+def rules_by_label(rules: list[tuple[str, str]]) -> dict[str, list[str]]:
+    grouped: dict[str, list[str]] = {}
     for label, rule in rules:
         grouped.setdefault(label, []).append(rule)
     return grouped

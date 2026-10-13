@@ -6,7 +6,6 @@ from dataclasses import dataclass
 import fargv
 
 from dre import JointSoftmaxObserver, L1Distance, PHOCEmbedder
-from phoc import PHOC
 from re2rnn_rules import CLASSES
 from run_common import classify
 
@@ -25,16 +24,18 @@ class Config:
     device: str = "cpu"
     engine: str = "viterbi"
     "Matcher: viterbi (most probable match) or dfa (total probability of a match)."
+    rules: str = "rules.tsv"
+    "Rule file in the dataset directory (e.g. a query variation of rules.tsv)."
 
 
 def main() -> None:
     cfg, _ = fargv.parse(Config)
 
     def make_observer(vocabulary):
-        return JointSoftmaxObserver(vocabulary, PHOCEmbedder(PHOC(), device=cfg.device), L1Distance(), CLASSES,
+        return JointSoftmaxObserver(vocabulary, PHOCEmbedder(device=cfg.device), L1Distance(), CLASSES,
                                     temperature=cfg.temperature, background=cfg.background, device=cfg.device)
 
-    classify(cfg.data_root, cfg.dataset, cfg.version, cfg.output, make_observer, cfg.device, cfg.engine)
+    classify(cfg.data_root, cfg.dataset, cfg.version, cfg.output, make_observer, cfg.device, cfg.engine, cfg.rules)
 
 
 if __name__ == "__main__":

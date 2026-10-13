@@ -4,7 +4,6 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 
 import fargv
 
@@ -21,7 +20,7 @@ class Config:
     workers: int = os.cpu_count() or 1
 
 
-def tokenize(doc: Tuple[str, str]) -> Tuple[str, str]:
+def tokenize(doc: tuple[str, str]) -> tuple[str, str]:
     return doc[0], token_string(doc[1])
 
 

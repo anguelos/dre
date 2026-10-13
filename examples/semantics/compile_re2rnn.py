@@ -13,7 +13,6 @@ import random
 import string
 import zipfile
 from pathlib import Path
-from typing import List
 
 import fargv
 import numpy as np
@@ -31,13 +30,13 @@ class NumpyOnlyUnpickler(pickle.Unpickler):
         return allowed[(module, name)]
 
 
-def degrade(tokens: List[str], probability: float, rng: random.Random) -> List[str]:
+def degrade(tokens: list[str], probability: float, rng: random.Random) -> list[str]:
     # Substitutes letters of real tokens; BOS/EOS markers are left alone, digits and punctuation are not letters.
     return [token if token in ("BOS", "EOS") else "".join(rng.choice(string.ascii_lowercase) if c.isalpha() and rng.random() < probability else c for c in token)
             for token in tokens]
 
 
-def write_jsonl(path: Path, labels: List[str], tokens: List[List[str]]) -> None:
+def write_jsonl(path: Path, labels: list[str], tokens: list[list[str]]) -> None:
     with open(path, "w") as f:
         for label, sentence in zip(labels, tokens):
             f.write(json.dumps({"label": label, "tokens": sentence}) + "\n")

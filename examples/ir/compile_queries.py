@@ -11,7 +11,6 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
 
 import fargv
 
@@ -51,7 +50,7 @@ def main() -> None:
         return lowest <= min(document_frequency[w] for w in words) <= highest
 
     n_ngrams = cfg.phrases + cfg.patterns
-    reservoir: List[List[str]] = []
+    reservoir: list[list[str]] = []
     n_candidates = 0
     for _, token_string in read_token_strings(tokens_path):
         tokens = token_string.split()
@@ -72,7 +71,7 @@ def main() -> None:
         n_candidates += 1
 
     vocabulary = sorted(w for w in document_frequency if re.fullmatch(r"[a-z]+", w))
-    regexes: List[Tuple[str, str]] = []
+    regexes: list[tuple[str, str]] = []
     for lo, hi in bands:
         candidates = [w for w in vocabulary if lo <= document_frequency[w] <= hi and len(w) >= cfg.min_word_len]
         regexes += [("word", w) for w in rng.sample(candidates, min(cfg.per_band, len(candidates)))]

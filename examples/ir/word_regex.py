@@ -2,7 +2,6 @@
 # A document becomes a token string where every token is followed by one space, and every query word becomes
 # `word ` — so concatenation, alternation and quantifiers keep their meaning at token granularity.
 import re
-from typing import List
 
 from dre.tokenizing import naive_word_tokenize
 
@@ -10,7 +9,7 @@ _QUERY_TOKEN = re.compile(r"[A-Za-z]+|[.^$*?+|()]")
 _VALID_QUERY = re.compile(r"(?:\s*(?:[A-Za-z]+|[.^$*?+|()]))*\s*")
 
 
-def query_tokens(query: str) -> List[str]:
+def query_tokens(query: str) -> list[str]:
     if _VALID_QUERY.fullmatch(query) is None:
         raise ValueError(f"Not a word regex: {query!r}")
     return _QUERY_TOKEN.findall(query)
@@ -35,7 +34,7 @@ def word_regex_body(query: str) -> str:
     return "".join(parts)
 
 
-def required_words(query: str) -> List[str]:
+def required_words(query: str) -> list[str]:
     # Words every match must contain: top-level words not made optional by a following ? or *. A top-level |
     # makes nothing required; words inside groups are conservatively ignored.
     tokens = query_tokens(query)
@@ -52,7 +51,7 @@ def required_words(query: str) -> List[str]:
     return required
 
 
-def may_match(required: List[str], padded_token_string: str) -> bool:
+def may_match(required: list[str], padded_token_string: str) -> bool:
     # padded_token_string is " " + token_string(...): every token is then delimited by spaces on both sides.
     return all(f" {word} " in padded_token_string for word in required)
 

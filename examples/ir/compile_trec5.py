@@ -10,7 +10,7 @@ import os
 import re
 import tarfile
 from pathlib import Path
-from typing import Dict, Iterator, List, Set, Tuple
+from collections.abc import Iterator
 
 import fargv
 
@@ -28,7 +28,7 @@ def clean(text: str) -> str:
     return " ".join(text.split())
 
 
-def parse_member(compressed: bytes) -> List[Tuple[str, str]]:
+def parse_member(compressed: bytes) -> list[tuple[str, str]]:
     text = gzip.decompress(compressed).decode("utf-8", errors="replace")
     # <PARENT> holds the parent document's DOCNO: metadata that was never printed, so absent from the OCR versions.
     text = re.sub(r"<PARENT>.*?</PARENT>", " ", text, flags=re.S)
@@ -43,8 +43,8 @@ def main() -> None:
     })
     root = Path(p.data_root) / "trec5"
     docs_dir = root / "docs"
-    members: Dict[str, Dict[str, bytes]] = {version: {} for version in VERSIONS}
-    omitted: Set[str] = set()
+    members: dict[str, dict[str, bytes]] = {version: {} for version in VERSIONS}
+    omitted: set[str] = set()
     with tarfile.open(root / "raw" / "confusion_track.tar.gz", "r|gz") as tar:
         for member in tar:
             parts = member.name.split("/")
@@ -54,12 +54,12 @@ def main() -> None:
                 omitted = set(tar.extractfile(member).read().decode().split())
             elif len(parts) > 2 and parts[1] in VERSIONS:
                 members[parts[1]][member.name] = tar.extractfile(member).read()
-    docnos: Dict[str, Set[str]] = {}
+    docnos: dict[str, set[str]] = {}
     for version in VERSIONS:
         names = sorted(members[version], key=str.lower)
-        seen: Set[str] = set()
+        seen: set[str] = set()
 
-        def unique_docs(names: List[str] = names, version: str = version, seen: Set[str] = seen) -> Iterator[Tuple[str, str]]:
+        def unique_docs(names: list[str] = names, version: str = version, seen: set[str] = seen) -> Iterator[tuple[str, str]]:
             for parsed in parallel_imap(parse_member, (members[version][name] for name in names), p.workers, chunksize=1):
                 for docno, text in parsed:
                     if docno in seen:

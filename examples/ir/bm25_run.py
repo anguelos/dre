@@ -6,30 +6,32 @@
 import shutil
 from collections import Counter
 from pathlib import Path
-from typing import Callable, List
+from collections.abc import Callable
 
-import pandas as pd
-import pyterrier as pt
+from dre.optional import optional_import
 
 from trec_io import Run, read_queries, read_token_strings, write_run
 from word_regex import query_tokens
 
-Terms = Callable[[List[str]], List[str]]  # tokens → index terms
+pd = optional_import("pandas")
+pt = optional_import("pyterrier")
+
+Terms = Callable[[list[str]], list[str]]  # tokens → index terms
 # Terrier fails on terms longer than its maximum term length or with non-ASCII characters. Query terms are ASCII
 # letters (plus the "_" boundary marker), so such document terms can never match; they are left out (document lengths
 # shrink marginally).
 MAX_TERM_LENGTH = 20
 
 
-def indexable(terms: List[str]) -> List[str]:
+def indexable(terms: list[str]) -> list[str]:
     return [term for term in terms if term.isascii() and len(term) <= MAX_TERM_LENGTH]
 
 
-def word_terms(tokens: List[str]) -> List[str]:
+def word_terms(tokens: list[str]) -> list[str]:
     return tokens
 
 
-def char_ngram_terms(n: int, tokens: List[str]) -> List[str]:
+def char_ngram_terms(n: int, tokens: list[str]) -> list[str]:
     # Overlapping character n-grams of every token with its boundaries marked by "_" (McNamee & Mayfield): "register"
     # gives "_reg", "regi", …, "ter_" for n = 4, so word starts and ends are distinguished from word interiors.
     # A marked token shorter than n is kept whole.
@@ -37,11 +39,11 @@ def char_ngram_terms(n: int, tokens: List[str]) -> List[str]:
     return [token[i:i + n] for token in marked for i in range(max(1, len(token) - n + 1))]
 
 
-def char4_terms(tokens: List[str]) -> List[str]:
+def char4_terms(tokens: list[str]) -> list[str]:
     return char_ngram_terms(4, tokens)
 
 
-def char5_terms(tokens: List[str]) -> List[str]:
+def char5_terms(tokens: list[str]) -> list[str]:
     return char_ngram_terms(5, tokens)
 
 

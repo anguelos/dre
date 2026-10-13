@@ -6,7 +6,6 @@ import re
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import List, Tuple
 
 import fargv
 
@@ -26,7 +25,7 @@ class Config:
     workers: int = os.cpu_count() or 1
 
 
-def count_matches(patterns: List[Tuple[str, re.Pattern, List[str]]], doc: Tuple[str, str]) -> Tuple[str, List[Tuple[str, int]]]:
+def count_matches(patterns: list[tuple[str, re.Pattern, list[str]]], doc: tuple[str, str]) -> tuple[str, list[tuple[str, int]]]:
     padded = " " + doc[1]
     counts = [(qid, sum(1 for _ in pattern.finditer(doc[1]))) for qid, pattern, required in patterns if may_match(required, padded)]
     return doc[0], [(qid, count) for qid, count in counts if count]

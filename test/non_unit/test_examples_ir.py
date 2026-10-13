@@ -91,6 +91,8 @@ def test_iter_trec_sgml():
 
 
 def test_synthetic_pipeline(tmp_path):
+    for package in ["regex", "ir_measures"]:  # the fuzzy baseline and the evaluation (pip install dre[recommended])
+        pytest.importorskip(package)
     def make(*targets):
         result = subprocess.run(["make", f"DATA={tmp_path}", "COLLECTION=synthetic", *targets], cwd=IR_DIR, capture_output=True, text=True)
         assert result.returncode == 0, result.stdout + result.stderr
@@ -123,14 +125,9 @@ def test_synthetic_pipeline(tmp_path):
     for qid, relevant in qrels.items():
         exact = {docno for docno, score in fuzzy[qid] if score == 0}
         assert set(relevant) <= exact
-    try:
-        import ir_measures  # noqa: F401
-    except ImportError:
-        pass
-    else:
-        make("eval_re")
-        rows = (root / "eval" / "re" / "original.tsv").read_text().splitlines()
-        assert rows[-1].startswith("mean\tall\t1.0000")
+    make("eval_re")
+    rows = (root / "eval" / "re" / "original.tsv").read_text().splitlines()
+    assert rows[-1].startswith("mean\tall\t1.0000")
     make("clean_re")
     assert not (root / "runs" / "re").exists()
     make("run_re", "VERSIONS=degrade5")

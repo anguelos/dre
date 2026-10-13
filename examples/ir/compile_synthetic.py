@@ -7,7 +7,6 @@ import random
 import string
 from functools import partial
 from pathlib import Path
-from typing import Tuple
 
 import fargv
 
@@ -16,7 +15,7 @@ from trec_io import parallel_imap, read_docs, write_docs
 NOISE = {"original": 0.0, "degrade5": 0.05, "degrade20": 0.20}
 
 
-def degrade(seed: int, version: str, doc: Tuple[str, str]) -> Tuple[str, str]:
+def degrade(seed: int, version: str, doc: tuple[str, str]) -> tuple[str, str]:
     docno, text = doc
     rng = random.Random(f"{seed}-{version}-{docno}")
     return docno, "".join(rng.choice(string.ascii_lowercase) if c.isalpha() and rng.random() < NOISE[version] else c for c in text)

@@ -34,4 +34,4 @@ make mrproper            # everything under data/, downloads included
 | `run_<method>.py` | one method on one version → TREC run file |
 | `evaluate.py` | run + qrels → per-query scores and summary |
 
-Experiment-only packages are listed in `requirements.txt`.
+The baselines and the evaluation use optional packages: `pip install -e "../..[recommended]"` (BM25 also needs Java: `sudo apt install default-jre-headless`).

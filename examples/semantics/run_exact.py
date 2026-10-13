@@ -19,6 +19,8 @@ class Config:
     device: str = "cpu"
     engine: str = "viterbi"
     "Matcher: viterbi (most probable match) or dfa (total probability of a match)."
+    rules: str = "rules.tsv"
+    "Rule file in the dataset directory (e.g. a query variation of rules.tsv)."
 
 
 def main() -> None:
@@ -27,7 +29,7 @@ def main() -> None:
     def make_observer(vocabulary):
         return ExactObserver(vocabulary, classes=CLASSES)
 
-    classify(cfg.data_root, cfg.dataset, cfg.version, cfg.output, make_observer, cfg.device, cfg.engine)
+    classify(cfg.data_root, cfg.dataset, cfg.version, cfg.output, make_observer, cfg.device, cfg.engine, cfg.rules)
 
 
 if __name__ == "__main__":

@@ -10,7 +10,6 @@ import torch
 
 from dre import JointSoftmaxObserver, L1Distance, PHOCEmbedder
 from dre_run import run_dre
-from phoc import PHOC
 
 
 @dataclass
@@ -36,7 +35,7 @@ def main() -> None:
     cfg, _ = fargv.parse(Config)
 
     def make_observer(vocabulary):
-        return JointSoftmaxObserver(vocabulary, PHOCEmbedder(PHOC(), device=cfg.device), L1Distance(),
+        return JointSoftmaxObserver(vocabulary, PHOCEmbedder(device=cfg.device), L1Distance(),
                                     temperature=cfg.temperature, background=cfg.background, device=cfg.device)
 
     run_dre(cfg.data_root, cfg.collection, cfg.version, cfg.output, "phoc_soft", make_observer, cfg.device, verbosity=cfg.verbosity, engine=cfg.engine)

@@ -26,6 +26,8 @@ class Config:
     device: str = "cpu"
     engine: str = "viterbi"
     "Matcher: viterbi (most probable match) or dfa (total probability of a match)."
+    rules: str = "rules.tsv"
+    "Rule file in the dataset directory (e.g. a query variation of rules.tsv)."
 
 
 def main() -> None:
@@ -35,7 +37,7 @@ def main() -> None:
         return JointSoftmaxObserver(vocabulary, CharCodeEmbedder(cfg.max_length, device=cfg.device), LevenshteinDistance(), CLASSES,
                                     temperature=cfg.temperature, background=cfg.background, device=cfg.device)
 
-    classify(cfg.data_root, cfg.dataset, cfg.version, cfg.output, make_observer, cfg.device, cfg.engine)
+    classify(cfg.data_root, cfg.dataset, cfg.version, cfg.output, make_observer, cfg.device, cfg.engine, cfg.rules)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@ import hashlib
 import os
 import urllib.request
 from pathlib import Path
-from typing import Dict
 
 import fargv
 import tqdm
@@ -31,7 +30,7 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def read_sums(path: Path) -> Dict[str, str]:
+def read_sums(path: Path) -> dict[str, str]:
     if not path.exists():
         return {}
     return {name: digest for digest, name in (line.split(maxsplit=1) for line in path.read_text().splitlines() if line.strip())}

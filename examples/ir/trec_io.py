@@ -5,13 +5,12 @@ import os
 import re
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Dict, Iterable, Iterator, List, NamedTuple, TextIO, Tuple, TypeVar, Union
+from typing import NamedTuple, TextIO, TypeVar
+from collections.abc import Callable, Iterable, Iterator
 
-from dre import Corpus, Tokenizer
-
-PathLike = Union[str, Path]
-Run = Dict[str, List[Tuple[str, float]]]
-Qrels = Dict[str, Dict[str, int]]
+PathLike = str | Path
+Run = dict[str, list[tuple[str, float]]]
+Qrels = dict[str, dict[str, int]]
 
 
 T = TypeVar("T")
@@ -54,7 +53,7 @@ def open_text(path: PathLike) -> TextIO:
     return open(path, "r", encoding="utf-8", errors="replace")
 
 
-def iter_trec_sgml(text: str) -> Iterator[Tuple[str, str]]:
+def iter_trec_sgml(text: str) -> Iterator[tuple[str, str]]:
     for doc in re.finditer(r"<DOC>(.*?)</DOC>", text, flags=re.S):
         body = doc.group(1)
         docno = re.search(r"<DOCNO>\s*(.*?)\s*</DOCNO>", body, flags=re.S)
@@ -65,7 +64,7 @@ def iter_trec_sgml(text: str) -> Iterator[Tuple[str, str]]:
         yield docno.group(1), content
 
 
-def write_docs(path: PathLike, docs: Iterable[Tuple[str, str]]) -> int:
+def write_docs(path: PathLike, docs: Iterable[tuple[str, str]]) -> int:
     count = 0
     with atomic_write(path) as f:
         for docno, text in docs:
@@ -74,14 +73,14 @@ def write_docs(path: PathLike, docs: Iterable[Tuple[str, str]]) -> int:
     return count
 
 
-def read_docs(path: PathLike) -> Iterator[Tuple[str, str]]:
+def read_docs(path: PathLike) -> Iterator[tuple[str, str]]:
     with open_text(path) as f:
         for line in f:
             record = json.loads(line)
             yield record["docno"], record["text"]
 
 
-def write_token_strings(path: PathLike, token_strings: Iterable[Tuple[str, str]]) -> int:
+def write_token_strings(path: PathLike, token_strings: Iterable[tuple[str, str]]) -> int:
     count = 0
     with atomic_write(path) as f:
         for docno, token_string in token_strings:
@@ -90,18 +89,12 @@ def write_token_strings(path: PathLike, token_strings: Iterable[Tuple[str, str]]
     return count
 
 
-def read_token_strings(path: PathLike) -> Iterator[Tuple[str, str]]:
+def read_token_strings(path: PathLike) -> Iterator[tuple[str, str]]:
     with open_text(path) as f:
         for line in f:
             docno, token_string = line.rstrip("\n").split("\t", 1)
             yield docno, token_string
 
-
-def read_corpus(path: PathLike) -> Tuple[List[str], Corpus]:
-    # A tokens file as dre consumes it: docnos, and the token strings as a Corpus (tokens are already split and
-    # lower-cased, so whitespace is the only separator).
-    documents = list(read_token_strings(path))
-    return [docno for docno, _ in documents], Corpus([tokens for _, tokens in documents], Tokenizer.pretokenized(), lowercase=False)
 
 def write_queries(path: PathLike, queries: Iterable[Query]) -> None:
     with atomic_write(path) as f:
@@ -109,7 +102,7 @@ def write_queries(path: PathLike, queries: Iterable[Query]) -> None:
             f.write(f"{query.qid}\t{query.family}\t{query.regex}\n")
 
 
-def read_queries(path: PathLike) -> List[Query]:
+def read_queries(path: PathLike) -> list[Query]:
     with open_text(path) as f:
         return [Query(*line.rstrip("\n").split("\t", 2)) for line in f if line.strip()]
 

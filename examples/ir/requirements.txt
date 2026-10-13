@@ -1,5 +1,0 @@
-# Packages needed only by the IR experiments, on top of dre's own requirements (../../requirements.txt).
-# The experiments import dre from ../../src (the Makefile sets PYTHONPATH), so dre itself need not be installed.
-ir_measures       # evaluate.py: trec_eval-compatible measures and per-query scores
-regex             # run_fuzzy.py: fuzzy matching with an edit budget
-python-terrier    # run_bm25_word.py, run_bm25_char3.py: BM25 (needs a Java 11+ runtime; the Makefile sets JAVA_HOME)
