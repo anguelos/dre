@@ -1,0 +1,35 @@
+ham	. *
+spam	. * acll <number> . *
+spam	. * ( call | rintgone ) <punct> * . * free . *
+spam	. * wno <punct> * . * cash <punct> * . * ( prize <punct> | prize ) . *
+spam	. * ( iwnner <punct> | winner ) <punct> * . * ( reward <punct> | reward ) . *
+spam	. * guaranteed <punct> * . * rfee . *
+spam	. * daitng <punct> * . * call . *
+spam	. * call <punct> * . * ofr <punct> * . * ( offer | offers ) . *
+spam	. * won <punct> * . * ( claim <punct> | calim ) . *
+spam	. * ( alert | urgent | urgetn <punct> ) <punct> * . * ( award | awarded ) <punct> * . * ( guaranteed <punct> | guaranteed ) . *
+spam	. * no exrta . *
+spam	. * important <punct> * . * ulcky . *
+spam	. * new mobiles <punct> * . * olny . *
+spam	. * caht to . *
+spam	. * won <punct> * . * acll . *
+spam	. * latest ( offer | offres ) . *
+spam	. * exipres <punct> * . * ( now <punct> | now ) . *
+spam	. * wni <punct> * . * shopping . *
+spam	. * please call <punct> * . * srevice . *
+spam	. * free <punct> * . * priec <punct> * . * call . *
+spam	. * cash <punct> * . * ( prize | rpize <punct> ) . *
+spam	. * free <punct> * . * ( hpone | phones ) . *
+spam	. * apssword . *
+spam	. * won <punct> * . * cahs . *
+spam	. * childpron . *
+spam	. * rcedits . *
+spam	. * ltaest . *
+spam	. * urgent <punct> * . * przie . *
+spam	. * ( sms <punct> | sms ) <punct> * . * relpy . *
+spam	. * diretc . *
+spam	. * vocuher <punct> * . * claim . *
+spam	. * free <punct> * . * tnoe . *
+spam	. * ( message <punct> | message ) <punct> * . * acll . *
+spam	. * ( fantaseis <punct> | fantasies ) call . *
+spam	. * inviting <punct> * . * ( firend <punct> | friend ) . *

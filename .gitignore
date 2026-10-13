@@ -111,7 +111,11 @@ venv.bak/
 # Project-specific temporary outputs
 tmp/
 tmp*
-examples/ir/data/
+# examples/ir: only the TREC-5 evaluations are kept (the paper's baselines)
+examples/ir/data/*
+!examples/ir/data/trec5/
+examples/ir/data/trec5/*
+!examples/ir/data/trec5/eval/
 examples/semantics/data/
 examples/phoc_semantic/data/
 doctest-output/
@@ -138,5 +142,12 @@ examples/phoc/
 examples/charters/
 examples/phoc_semantic/
 
-# query_augmentation outputs (REPORT.md is kept)
-examples/query_augmentation/data/
+# query_augmentation: results, query variants and gzipped RE2RNN predictions are kept (~2.6 MB); TREC-5 run files,
+# GloVe and WordNet are not (make stage / make trec5_* recreate them)
+examples/query_augmentation/data/*
+!examples/query_augmentation/data/results/
+!examples/query_augmentation/data/re2rnn/
+!examples/query_augmentation/data/trec5/
+!examples/query_augmentation/data/runs/
+examples/query_augmentation/data/runs/*
+!examples/query_augmentation/data/runs/re2rnn.tar.gz

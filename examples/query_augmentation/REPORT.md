@@ -1,6 +1,6 @@
 # Query augmentation: dre under query variations and document noise
 
-Updated 2026-10-13 03:17 — 1396/1397 results.
+Updated 2026-10-13 05:07 — 1397/1397 results.
 
 Query variations after Penha, Câmara & Hauff, *Evaluating the Robustness of Retrieval Pipelines with Query
 Variation Generators* (ECIR 2022): one word of every rule / query changed, each generator a separate ablation —
@@ -252,5 +252,5 @@ Query variations:
 | exact.viterbi | 0.1645 | 0.0824 (-49.9%) | 0.0001 (-100.0%) | 0.0015 (-99.1%) | 0.0002 (-99.9%) |
 | levenshtein.viterbi | 0.4643 | 0.2143 (-53.8%) | 0.2810 (-39.5%) | 0.3943 (-15.1%) | 0.3789 (-18.4%) |
 | phoc.viterbi | 0.4259 | 0.1851 (-56.5%) | 0.3845 (-9.7%) | 0.3597 (-15.6%) | 0.3633 (-14.7%) |
-| phoc_csls100.viterbi | 0.3338 | … | 0.2444 (-26.8%) | 0.2435 (-27.1%) | 0.2337 (-30.0%) |
+| phoc_csls100.viterbi | 0.3338 | 0.1748 (-47.6%) | 0.2444 (-26.8%) | 0.2435 (-27.1%) | 0.2337 (-30.0%) |
 

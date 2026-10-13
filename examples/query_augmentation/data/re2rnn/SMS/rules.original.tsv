@@ -1,0 +1,35 @@
+ham	. *
+spam	. * call <number> . *
+spam	. * ( call | ringtone ) <punct> * . * free . *
+spam	. * won <punct> * . * cash <punct> * . * ( prize <punct> | prize ) . *
+spam	. * ( winner <punct> | winner ) <punct> * . * ( reward <punct> | reward ) . *
+spam	. * guaranteed <punct> * . * free . *
+spam	. * dating <punct> * . * call . *
+spam	. * call <punct> * . * for <punct> * . * ( offer | offers ) . *
+spam	. * won <punct> * . * ( claim <punct> | claim ) . *
+spam	. * ( alert | urgent | urgent <punct> ) <punct> * . * ( award | awarded ) <punct> * . * ( guaranteed <punct> | guaranteed ) . *
+spam	. * no extra . *
+spam	. * important <punct> * . * lucky . *
+spam	. * new mobiles <punct> * . * only . *
+spam	. * chat to . *
+spam	. * won <punct> * . * call . *
+spam	. * latest ( offer | offers ) . *
+spam	. * expires <punct> * . * ( now <punct> | now ) . *
+spam	. * win <punct> * . * shopping . *
+spam	. * please call <punct> * . * service . *
+spam	. * free <punct> * . * price <punct> * . * call . *
+spam	. * cash <punct> * . * ( prize | prize <punct> ) . *
+spam	. * free <punct> * . * ( phone | phones ) . *
+spam	. * password . *
+spam	. * won <punct> * . * cash . *
+spam	. * childporn . *
+spam	. * credits . *
+spam	. * latest . *
+spam	. * urgent <punct> * . * prize . *
+spam	. * ( sms <punct> | sms ) <punct> * . * reply . *
+spam	. * direct . *
+spam	. * voucher <punct> * . * claim . *
+spam	. * free <punct> * . * tone . *
+spam	. * ( message <punct> | message ) <punct> * . * call . *
+spam	. * ( fantasies <punct> | fantasies ) call . *
+spam	. * inviting <punct> * . * ( friend <punct> | friend ) . *

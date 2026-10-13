@@ -1,0 +1,35 @@
+ham	. *
+spam	. * outcry <number> . *
+spam	. * ( yell | ringtone ) <punct> * . * free . *
+spam	. * won <punct> * . * cash <punct> * . * ( award <punct> | prize ) . *
+spam	. * ( winner <punct> | victor ) <punct> * . * ( reward <punct> | reward ) . *
+spam	. * vouch <punct> * . * free . *
+spam	. * dating <punct> * . * shout . *
+spam	. * call <punct> * . * for <punct> * . * ( offer | offering ) . *
+spam	. * acquire <punct> * . * ( claim <punct> | claim ) . *
+spam	. * ( alert | urgent | urgent <punct> ) <punct> * . * ( award | present ) <punct> * . * ( guaranteed <punct> | guaranteed ) . *
+spam	. * nobelium extra . *
+spam	. * significant <punct> * . * lucky . *
+spam	. * fresh mobiles <punct> * . * only . *
+spam	. * schmoose to . *
+spam	. * acquire <punct> * . * call . *
+spam	. * latest ( offer | offering ) . *
+spam	. * expires <punct> * . * ( now <punct> | nowadays ) . *
+spam	. * win <punct> * . * frequent . *
+spam	. * please call <punct> * . * avail . *
+spam	. * free <punct> * . * price <punct> * . * shout . *
+spam	. * cash <punct> * . * ( award | prize <punct> ) . *
+spam	. * free <punct> * . * ( telephone | phones ) . *
+spam	. * watchword . *
+spam	. * gain <punct> * . * cash . *
+spam	. * childporn . *
+spam	. * recognition . *
+spam	. * modish . *
+spam	. * urgent <punct> * . * award . *
+spam	. * ( sms <punct> | sms ) <punct> * . * response . *
+spam	. * place . *
+spam	. * verifier <punct> * . * claim . *
+spam	. * unloose <punct> * . * tone . *
+spam	. * ( content <punct> | message ) <punct> * . * call . *
+spam	. * ( fantasies <punct> | fantasies ) yell . *
+spam	. * tempt <punct> * . * ( friend <punct> | friend ) . *

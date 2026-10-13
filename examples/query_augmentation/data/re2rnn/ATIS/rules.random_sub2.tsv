@@ -1,0 +1,27 @@
+abbreviation	( . * ( meag | ( stand | stands ) for | code ) . * )
+abbreviation	( . * wlat is . EOS )
+aircraft	. * ( aircraft | airplane | plant | planes | airplanes ) . *
+aircraft+flight+flight_no	. * ( aircraft | asrplane | plane | planes | airplanes ) . * flight number . *
+airfare	. * ( airfare | bares | fare | cost | costs | class ( ticket | ticket ) | how much | ( price | prices ) of ) . * ( ( from . * to . * ) | ( between . * and . * ) ) . *
+airfare+flight	. * airfare . * fhight . *
+airfare+flight_time	. * ( airfare | airfares | cost | how murh ) . * flight time . *
+airline	. * ( airlines | aijline ) . *
+airline+flight_no	. * ( airlines | airline ) . * flight ( numbej | numbers ) . *
+airport	. * ( airpfrt | airports ) . *
+capacity	. * ( ( capacities | capacity ) | how manq ( seats | passengers | people ) | number of ( seats | passengers | people ) ) . *
+cheapest	. * cheapest flre in the database . *
+city	. * ( where is | citiec | city ) . *
+day_name	. * whax day . *
+distance	. * ( uow far | how long | distance ) . *
+flight	. * ( flights | flight | ( ( go | get | fiy ) from . * to . * ) ) . *
+flight+airfare	. * ( flights | flight ) and ( fare | fqres ) . *
+flight+airline	. * ( flight ind airlines ) . *
+flight_no	. * ( ( ( flight | fligpts ) number ) | ( number of ( flight | flights ) ) ) . *
+flight_no+airline	. * flxght ( number | numbers ) . * ( airlines | airline ) . *
+flight_time	. * ( schedule | schedules | ( ( what | departqre | arrival | flight | flights ) . * ( time | times ) ) ) . *
+ground_fare	. * ( price | urices | cost | costs ) . * ( ( ( rent | rental ) . * ( car | cars ) ) | ( ( limousine | limo ) service ) ) . *
+ground_service	. * ( ground ( transport | transportation ) | ( ( renp | rental ) . * ( car | cars ) ) | ( ( limousine | limo ) service ) ) . *
+ground_service+ground_fare	. * ( ground ( transrort | transportation ) ) . * how much . *
+meal	. * ( meaa | meals ) . *
+quantity	. * ( how many . * ( flights | flight | code | stops | airports | booking ciass | fares | fare ) ) . *
+restriction	. * ( what . * ( oestriction | restrictions ) ) . *

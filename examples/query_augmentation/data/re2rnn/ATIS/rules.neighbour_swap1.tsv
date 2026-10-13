@@ -1,0 +1,27 @@
+abbreviation	( . * ( maen | ( stand | stands ) for | code ) . * )
+abbreviation	( . * waht is . EOS )
+aircraft	. * ( aircraft | airplane | plane | plaens | airplanes ) . *
+aircraft+flight+flight_no	. * ( aircraft | airplane | plane | planes | ariplanes ) . * flight number . *
+airfare	. * ( airfare | fares | fare | cost | costs | class ( ticket | ticket ) | how much | ( price | prices ) of ) . * ( ( from . * to . * ) | ( between . * nad . * ) ) . *
+airfare+flight	. * airfare . * fligth . *
+airfare+flight_time	. * ( airfare | airfares | cost | how umch ) . * flight time . *
+airline	. * ( airlines | airlien ) . *
+airline+flight_no	. * ( airlines | ailrine ) . * flight ( number | numbers ) . *
+airport	. * ( airport | airporst ) . *
+capacity	. * ( ( capactiies | capacity ) | how many ( seats | passengers | people ) | number of ( seats | passengers | people ) ) . *
+cheapest	. * cheapest fare in hte database . *
+city	. * ( where is | ciites | city ) . *
+day_name	. * whta day . *
+distance	. * ( how far | how olng | distance ) . *
+flight	. * ( flights | flight | ( ( go | get | fyl ) from . * to . * ) ) . *
+flight+airfare	. * ( flights | flight ) adn ( fare | fares ) . *
+flight+airline	. * ( flight and airilnes ) . *
+flight_no	. * ( ( ( flight | filghts ) number ) | ( number of ( flight | flights ) ) ) . *
+flight_no+airline	. * flgiht ( number | numbers ) . * ( airlines | airline ) . *
+flight_time	. * ( schedule | schedules | ( ( what | departure | arrival | flight | flights ) . * ( time | timse ) ) ) . *
+ground_fare	. * ( rpice | prices | cost | costs ) . * ( ( ( rent | rental ) . * ( car | cars ) ) | ( ( limousine | limo ) service ) ) . *
+ground_service	. * ( ground ( transport | transportation ) | ( ( ernt | rental ) . * ( car | cars ) ) | ( ( limousine | limo ) service ) ) . *
+ground_service+ground_fare	. * ( ground ( transport | tranpsortation ) ) . * how much . *
+meal	. * ( meal | maels ) . *
+quantity	. * ( ohw many . * ( flights | flight | code | stops | airports | booking class | fares | fare ) ) . *
+restriction	. * ( hwat . * ( restriction | restrictions ) ) . *

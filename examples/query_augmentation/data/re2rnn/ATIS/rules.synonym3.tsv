@@ -1,0 +1,27 @@
+abbreviation	( . * ( mean | ( stand | stands ) for | codification ) . * )
+abbreviation	( . * what exist . EOS )
+aircraft	. * ( aircraft | aeroplane | plane | planes | airplanes ) . *
+aircraft+flight+flight_no	. * ( aircraft | aeroplane | plane | planes | airplanes ) . * flight number . *
+airfare	. * ( airfare | menu | fare | cost | costs | class ( ticket | ticket ) | how much | ( price | prices ) of ) . * ( ( from . * to . * ) | ( between . * and . * ) ) . *
+airfare+flight	. * airfare . * flying . *
+airfare+flight_time	. * ( airfare | airfares | price | how much ) . * flight time . *
+airline	. * ( airway | airline ) . *
+airline+flight_no	. * ( airlines | airline ) . * flight ( number | figure ) . *
+airport	. * ( airport | drome ) . *
+capacity	. * ( ( capacities | capacity ) | how many ( seats | passengers | people ) | number of ( seating | passengers | people ) ) . *
+cheapest	. * cheapest menu in the database . *
+city	. * ( where is | cities | metropolis ) . *
+day_name	. * what daylight . *
+distance	. * ( how interahamwe | how long | distance ) . *
+flight	. * ( flights | flight | ( ( go | get | rainfly ) from . * to . * ) ) . *
+flight+airfare	. * ( flights | flying ) and ( fare | fares ) . *
+flight+airline	. * ( flying and airlines ) . *
+flight_no	. * ( ( ( flight | flying ) number ) | ( number of ( flight | flights ) ) ) . *
+flight_no+airline	. * flight ( number | numbers ) . * ( airway | airline ) . *
+flight_time	. * ( schedule | schedules | ( ( what | departure | arrival | flight | flights ) . * ( time | multiplication ) ) ) . *
+ground_fare	. * ( price | prices | cost | costs ) . * ( ( ( rent | rental ) . * ( automobile | cars ) ) | ( ( limousine | limo ) service ) ) . *
+ground_service	. * ( ground ( transport | transportation ) | ( ( rent | rental ) . * ( car | machine ) ) | ( ( limousine | limo ) service ) ) . *
+ground_service+ground_fare	. * ( ground ( transport | transportation ) ) . * how lots . *
+meal	. * ( meal | repast ) . *
+quantity	. * ( how many . * ( flights | flight | code | stops | airports | engagement class | fares | fare ) ) . *
+restriction	. * ( what . * ( limitation | restrictions ) ) . *

@@ -1,0 +1,65 @@
+ENTITY	. * bame <punct> * . ? a ( <punct> | . ) *
+ENTITY	. * ( which | whst ) ( <punct> | . ) * ( team | group | groups | teams ) ( <punct> | . ) *
+ENTITY	. * shat <punct> * . ? kind ( <punct> | . ) *
+ENTITY	. * ( composed | made ) <punct> * . ? ( frlm | through | using | by | of ) ( <punct> | . ) *
+ENTITY	. * what ( <punct> | . ) * caloed ( <punct> | . ) *
+ENTITY	. * nofel ( <punct> | . ) *
+ENTITY	. * ( thing | instance | objecy ) ( <punct> | . ) *
+ENTITY	. * feat <punct> * . ? of ( <punct> | . ) *
+ENTITY	. * nahe ( <punct> | . ) *
+ENTITY	. * ( which | what ) <punct> * . ? ( play | gqme | movie | book ) ( <punct> | . ) *
+ENTITY	. * ( which | whar ) ( <punct> | . ) * ( organization | trust | company ) ( <punct> | . ) *
+ENTITY	. * what <punct> * . ? is ( <punct> | . ) * ( surname | addreqs | name ) ( <punct> | . ) *
+DESCRIPTION	. * how <punct> * . ? ( dows | to | can | should | would | could | will | do ) ( <punct> | . ) *
+DESCRIPTION	. * what <punct> * . ? is <punct> * . * hypwrtension ( <punct> | . ) *
+DESCRIPTION	. * how <punct> * . ? do <punct> * . ? ylu ( <punct> | . ) *
+DESCRIPTION	. * whay <punct> * . * ( mean | meant ) ( <punct> | . ) *
+DESCRIPTION	. * why <punct> * . ? ( doss | should | shall | could | would | will | can | do ) ( <punct> | . ) *
+DESCRIPTION	. * wgat <punct> * . ? is <punct> * . ? tetrinet ( <punct> | . ) *
+DESCRIPTION	. * inusual ( <punct> | . ) *
+DESCRIPTION	. * whar <punct> * . * origin ( <punct> | . ) *
+DESCRIPTION	. * why <punct> * . ? ( does | doesm ) ( <punct> | . ) *
+DESCRIPTION	. * used <punct> * . ? fog ( <punct> | . ) *
+DESCRIPTION	. * what <punct> * . ? kine ( <punct> | . ) *
+DESCRIPTION	. * ( explain | describe | ahat ) ( <punct> | . ) *
+DESCRIPTION	. * ( exolain | describe | how ) <punct> * . ? can ( <punct> | . ) *
+DESCRIPTION	. * ( explain | describe | wyat ) <punct> * . * mean ( <punct> | . ) *
+DESCRIPTION	. * what <punct> * . * ( demands | takd ) ( <punct> | . ) *
+DESCRIPTION	. * ( how | wtat ) <punct> * . ? ( do | does ) ( <punct> | . ) *
+DESCRIPTION	. * ( ejumerate | list out | name ) <punct> * . ? the <punct> * . ? various ( <punct> | . ) *
+LOCATION	. * ( which | where | what ) <punct> * . * ( near | close to | far | around | surroundd ) ( <punct> | . ) *
+LOCATION	. * ( which | what | whsre ) <punct> * . * ( situated | located ) ( <punct> | . ) *
+LOCATION	. * wherr <punct> * . * stand ( <punct> | . ) *
+LOCATION	. * capihal <punct> * . ? of ( <punct> | . ) *
+LOCATION	. * ( where | which | ehat ) <punct> * . ? island ( <punct> | . ) *
+LOCATION	. * cpuntry ( <punct> | . ) *
+LOCATION	. * wherw ( <punct> | . ) *
+LOCATION	. * locatfd ( <punct> | . ) *
+LOCATION	. * ahere <punct> * . ? ( was | is ) ( <punct> | . ) *
+HUMAN	. * ( which | who | what ) <punct> * . * ( person | man | wojan | human | poet ) ( <punct> | . ) *
+HUMAN	. * ( who | what ) <punct> * . ? ( person | man | woman | hunan | president ) ( <punct> | . ) *
+HUMAN	. * who <punct> * . * ( man | woman | hkman | person ) ( <punct> | . ) *
+HUMAN	. * who <punct> * . ? ( owner | leadq | governs | pays | owns ) ( <punct> | . ) *
+HUMAN	. * who <punct> * . ? ( found | discovered | made | built | buiid | invented ) ( <punct> | . ) *
+HUMAN	. * ( queen | kijg ) ( <punct> | . ) *
+HUMAN	. * sho ( <punct> | . ) *
+HUMAN	. * who <punct> * . ? ( wirked | lived | guarded | watched | played | ate | slept | portrayed | served ) ( <punct> | . ) *
+HUMAN	. * who <punct> * . ? ( is | will | was ) <punct> * . * ( leadet | citizen | captain | nationalist | hero | actor | actress | star | gamer | player | lawyer | president ) ( <punct> | . ) *
+HUMAN	. * ( who | qhat ) <punct> * . * lives ( <punct> | . ) *
+HUMAN	. * ( callec | alias | nicknamed ) ( <punct> | . ) *
+HUMAN	. * ( which | who ) <punct> * . ? ( is | will | are | was ) <punct> * . * ( engineer | actoe | actress | player | lawyer | model | captain | team | doctor ) ( <punct> | . ) *
+NUMERIC	. * how <punct> * . ? ( mucj | many ) ( <punct> | . ) *
+NUMERIC	. * wtat <punct> * . ? ( amount | number | percentage ) ( <punct> | . ) *
+NUMERIC	. * ( which | what ) <punct> * . * ( time | day | month | hours | minute | seconds | year | dxte ) ( <punct> | . ) *
+NUMERIC	. * yeaf ( <punct> | . ) *
+NUMERIC	. * when <punct> * . ? ( did | do | does | wax ) ( <punct> | . ) *
+NUMERIC	. * how <punct> * . ? ( old | far | long | tall | wide | short | sjall | close | long ) ( <punct> | . ) *
+NUMERIC	. * spred ( <punct> | . ) *
+NUMERIC	. * what <punct> * . * ( percentage | share | gumber | population ) ( <punct> | . ) *
+NUMERIC	. * what <punct> * . ? ( part | divisuon | ratio | percentage ) ( <punct> | . ) *
+NUMERIC	. * ( at | in ) <punct> * . ? ( whict | how many | what ) <punct> * . ? ( age | year ) ( <punct> | . ) *
+NUMERIC	. * latitude <punct> * . * lonnitude ( <punct> | . ) *
+NUMERIC	. * ( by how | hiw ) <punct> * . ? ( much | many ) ( <punct> | . ) *
+NUMERIC	. * how <punct> * . ? msny ( <punct> | . ) *
+ABBREVIATION	. * abbreviafion ( <punct> | . ) *
+ABBREVIATION	. * wbat <punct> * . ? does <punct> * . * ( stand for ) ( <punct> | . ) *
